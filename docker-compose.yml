@@ -31,16 +31,13 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-    entrypoint: ["/bin/bash", "-c"]
-    command: >
-      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create
-      --if-not-exists --topic amazon.reviews.raw --partitions 8 --replication-factor 1 &&
-      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create
-      --if-not-exists --topic amazon.reviews.clean --partitions 8 --replication-factor 1 &&
-      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create
-      --if-not-exists --topic amazon.reviews.enriched --partitions 8 --replication-factor 1 &&
-      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create
-      --if-not-exists --topic amazon.reviews.dlq --partitions 4 --replication-factor 1
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic amazon.reviews.raw --partitions 8 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic amazon.reviews.clean --partitions 8 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic amazon.reviews.enriched --partitions 8 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic amazon.reviews.dlq --partitions 4 --replication-factor 1
 
   mongodb:
     image: mongo:8.0
