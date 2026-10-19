@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "amazon-review-intelligence"
+version = "0.1.0"
+description = "Real-time Amazon review sentiment analytics pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.8,<3",
+  "typer>=0.12,<1",
+]
+
+[project.optional-dependencies]
+data = []
+nlp = ["scikit-learn>=1.5,<2", "joblib>=1.4,<2"]
+streaming = ["kafka-python-ng>=2.2,<3", "pymongo>=4.10,<5"]
+dev = ["pytest>=8,<10", "ruff>=0.6,<1"]
+
+[project.scripts]
+ari-prepare = "amazon_review_intelligence.data.prepare:app"
+ari-profile = "amazon_review_intelligence.data.profile:app"
+ari-train-baseline = "amazon_review_intelligence.nlp.train_baseline:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/amazon_review_intelligence"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
