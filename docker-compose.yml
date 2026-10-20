@@ -73,6 +73,8 @@ services:
       - /opt/spark/bin/spark-submit
       - --master
       - local[*]
+      - --conf
+      - spark.jars.ivy=/tmp/.ivy2
       - --packages
       - org.apache.spark:spark-sql-kafka-0-10_2.13:4.2.0
       - /opt/app/src/amazon_review_intelligence/streaming/spark_job.py
