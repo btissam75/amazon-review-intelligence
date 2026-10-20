@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
-from functools import lru_cache
 
 from pyspark.sql import DataFrame, SparkSession, functions as F, types as T
+
+from amazon_review_intelligence.nlp.inference import predict_sentiment
 
 
 REVIEW_SCHEMA = T.StructType(
@@ -32,20 +33,6 @@ SENTIMENT_SCHEMA = T.StructType(
         T.StructField("score", T.DoubleType(), False),
     ]
 )
-
-
-@lru_cache(maxsize=1)
-def load_model():
-    import joblib
-
-    return joblib.load(os.getenv("ARI_MODEL_PATH", "/opt/app/models/sentiment_baseline.joblib"))
-
-
-def predict_sentiment(text: str):
-    model = load_model()
-    probabilities = model.predict_proba([text or ""])[0]
-    best = int(probabilities.argmax())
-    return str(model.classes_[best]), float(probabilities[best])
 
 
 sentiment_udf = F.udf(predict_sentiment, SENTIMENT_SCHEMA)
