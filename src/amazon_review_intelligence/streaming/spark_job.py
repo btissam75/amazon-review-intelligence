@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 
 from pyspark.sql import DataFrame, SparkSession, functions as F, types as T
 
@@ -38,6 +39,28 @@ SENTIMENT_SCHEMA = T.StructType(
 sentiment_udf = F.udf(predict_sentiment, SENTIMENT_SCHEMA)
 
 
+def run_mongo_operation_with_retry(operation, operation_name: str):
+    """Retry a MongoDB operation when Docker DNS or the server is temporarily unavailable."""
+    from pymongo.errors import AutoReconnect, ConnectionFailure, NetworkTimeout
+
+    max_attempts = int(os.getenv("ARI_MONGODB_MAX_RETRIES", "30"))
+    delay = float(os.getenv("ARI_MONGODB_RETRY_DELAY_SECONDS", "2"))
+    retryable_errors = (AutoReconnect, ConnectionFailure, NetworkTimeout)
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return operation()
+        except retryable_errors as error:
+            if attempt == max_attempts:
+                raise
+            wait_seconds = min(delay * (2 ** min(attempt - 1, 4)), 30.0)
+            print(
+                f"mongo_retry operation={operation_name} attempt={attempt}/{max_attempts} "
+                f"wait_seconds={wait_seconds:.1f} error={error}",
+                flush=True,
+            )
+            time.sleep(wait_seconds)
+
+
 def write_outputs(batch: DataFrame, batch_id: int) -> None:
     """Write one enriched micro-batch to Kafka and idempotently to MongoDB."""
     if batch.rdd.isEmpty():
@@ -56,7 +79,11 @@ def write_outputs(batch: DataFrame, batch_id: int) -> None:
     documents = (row.asDict(recursive=True) for row in batch.toLocalIterator())
     from pymongo import MongoClient, UpdateOne
 
-    client = MongoClient(os.getenv("ARI_MONGODB_URI", "mongodb://mongodb:27017"))
+    client = MongoClient(
+        os.getenv("ARI_MONGODB_URI", "mongodb://mongodb:27017"),
+        connectTimeoutMS=5_000,
+        serverSelectionTimeoutMS=5_000,
+    )
     collection = client[os.getenv("ARI_MONGODB_DATABASE", "amazon_reviews")][
         "reviews_enriched"
     ]
@@ -65,14 +92,26 @@ def write_outputs(batch: DataFrame, batch_id: int) -> None:
     for document in documents:
         operations.append(UpdateOne({"review_id": document["review_id"]}, {"$set": document}, upsert=True))
         if len(operations) >= 1_000:
-            collection.bulk_write(operations, ordered=False)
+            run_mongo_operation_with_retry(
+                lambda: collection.bulk_write(operations, ordered=False),
+                "bulk_write",
+            )
             total += len(operations)
             operations.clear()
     if operations:
-        collection.bulk_write(operations, ordered=False)
+        run_mongo_operation_with_retry(
+            lambda: collection.bulk_write(operations, ordered=False),
+            "bulk_write",
+        )
         total += len(operations)
-    collection.create_index("review_id", unique=True)
-    collection.create_index([("product_id", 1), ("review_timestamp", -1)])
+    run_mongo_operation_with_retry(
+        lambda: collection.create_index("review_id", unique=True),
+        "create_review_id_index",
+    )
+    run_mongo_operation_with_retry(
+        lambda: collection.create_index([("product_id", 1), ("review_timestamp", -1)]),
+        "create_product_timestamp_index",
+    )
     client.close()
     batch.unpersist()
     print(f"completed_batch={batch_id} kafka_and_mongo_rows={total}", flush=True)

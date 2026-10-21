@@ -42,6 +42,7 @@ services:
   mongodb:
     image: mongo:8.0
     container_name: ari-mongodb
+    restart: unless-stopped
     ports:
       - "27017:27017"
     healthcheck:
@@ -57,6 +58,7 @@ services:
       context: .
       dockerfile: infrastructure/spark.Dockerfile
     container_name: ari-spark-streaming
+    restart: unless-stopped
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -69,6 +71,8 @@ services:
       ARI_MODEL_PATH: /opt/app/models/sentiment_baseline.joblib
       ARI_MAX_OFFSETS_PER_TRIGGER: 20000
       ARI_CHECKPOINT_ROOT: /opt/app/checkpoints
+      ARI_MONGODB_MAX_RETRIES: 30
+      ARI_MONGODB_RETRY_DELAY_SECONDS: 2
     command:
       - /opt/spark/bin/spark-submit
       - --master
