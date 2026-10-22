@@ -63,8 +63,6 @@ def run_mongo_operation_with_retry(operation, operation_name: str):
 
 def write_outputs(batch: DataFrame, batch_id: int) -> None:
     """Write one enriched micro-batch to Kafka and idempotently to MongoDB."""
-    if batch.rdd.isEmpty():
-        return
     batch.persist()
     (
         batch.select(
@@ -126,6 +124,7 @@ def main() -> None:
     spark = (
         SparkSession.builder.appName("amazon-review-sentiment-stream")
         .config("spark.sql.shuffle.partitions", os.getenv("ARI_SPARK_SHUFFLE_PARTITIONS", "8"))
+        .config("spark.sql.adaptive.enabled", "false")
         .getOrCreate()
     )
     spark.sparkContext.setLogLevel("WARN")
