@@ -3,6 +3,7 @@ services:
     image: apache/kafka:4.1.0
     hostname: kafka
     container_name: ari-kafka
+    restart: unless-stopped
     ports:
       - "9092:9092"
     environment:
@@ -20,9 +21,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/9092'"]
       interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+      timeout: 10s
+      retries: 30
+      start_period: 300s
     volumes:
       - kafka-data:/var/lib/kafka/data
 
