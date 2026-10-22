@@ -63,6 +63,9 @@ def run_mongo_operation_with_retry(operation, operation_name: str):
 
 def write_outputs(batch: DataFrame, batch_id: int) -> None:
     """Write one enriched micro-batch to Kafka and idempotently to MongoDB."""
+    # The source is a historical replay and is not ordered by event time. Deduplicate only
+    # inside the current batch; MongoDB's unique review_id index handles cross-batch retries.
+    batch = batch.dropDuplicates(["review_id"])
     batch.persist()
     (
         batch.select(
@@ -155,8 +158,6 @@ def main() -> None:
     valid = (
         parsed.filter(validity)
         .withColumn("review_timestamp", F.to_timestamp("review_timestamp"))
-        .withWatermark("review_timestamp", "7 days")
-        .dropDuplicates(["review_id"])
     )
     enriched = (
         valid.withColumn("nlp", sentiment_udf(F.concat_ws(" ", "title", "text")))

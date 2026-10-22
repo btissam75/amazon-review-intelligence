@@ -73,7 +73,7 @@ services:
       ARI_MONGODB_DATABASE: amazon_reviews
       ARI_MODEL_PATH: /opt/app/models/sentiment_baseline.joblib
       ARI_MAX_OFFSETS_PER_TRIGGER: 20000
-      ARI_CHECKPOINT_ROOT: /opt/app/checkpoints/topic-generation-2
+      ARI_CHECKPOINT_ROOT: /opt/app/checkpoints/topic-generation-3
       ARI_MONGODB_MAX_RETRIES: 30
       ARI_MONGODB_RETRY_DELAY_SECONDS: 2
     command:
