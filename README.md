@@ -81,3 +81,23 @@ docker compose --profile ingest run --rm producer
 Le producteur est configuré pour publier jusqu’à 1 000 000 d’avis à 5 000 événements/seconde.
 Les checkpoints Spark sont persistés dans `data/checkpoints`.
 
+## Recommandations hybrides ALS + NLP
+
+Le job de recommandation entraîne Spark ALS sur les interactions utilisateur-produit, construit
+des profils produits à partir des sentiments stockés dans MongoDB, puis reclasse les candidats
+avec 65 % de personnalisation ALS, 25 % de qualité NLP et 10 % de popularité. Les Top-10 sont
+matérialisés dans `user_recommendations`; `recommendation_fallbacks` sert les utilisateurs sans
+historique suffisant.
+
+```powershell
+docker compose --profile recommendation build recommender
+docker compose --profile recommendation run --rm recommender
+```
+
+Collections produites :
+
+- `product_profiles` : note, sentiment, confiance, achats vérifiés et score qualité ;
+- `user_recommendations` : Top-10 personnalisé et raisons explicables ;
+- `recommendation_fallbacks` : meilleurs produits pour le démarrage à froid ;
+- `model_registry` : version, pondérations et état du modèle.
+

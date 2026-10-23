@@ -32,21 +32,29 @@ La classe neutre est la plus difficile et sera la priorité du modèle Transform
    comme clé Kafka, compression gzip, accusé de réception complet et débit configurable.
 2. Spark Structured Streaming lit huit partitions Kafka et limite chaque micro-lot à 20 000
    événements.
-3. Spark valide les événements, applique un watermark de sept jours et déduplique par
-   `review_id`.
+3. Spark valide les événements et déduplique chaque micro-lot par `review_id`. Le corpus est un
+   rejeu historique non ordonné : aucun watermark événementiel ne supprime donc les avis anciens.
 4. Les événements invalides sont publiés dans `amazon.reviews.dlq`.
 5. Le modèle NLP produit `sentiment_label`, `sentiment_score`, `model_name` et `model_version`.
 6. Chaque micro-lot enrichi est publié dans `amazon.reviews.enriched` et écrit par upsert
    idempotent dans MongoDB.
 7. Les checkpoints Spark sont persistés afin de permettre la reprise.
 
-## Validation
+## Validation finale
 
-- 10 tests Python réussis.
+- **1 000 000** avis uniques enrichis dans MongoDB.
+- Sentiments : 674 808 positifs, 163 429 négatifs et 161 763 neutres.
+- Confiance moyenne : 0,864 positif, 0,764 négatif et 0,654 neutre.
+- 14 tests Python réussis après ajout du moteur de recommandation.
 - Sources Python compilées sans erreur.
 - Configuration Docker Compose validée.
-- Le démarrage des conteneurs reste bloqué localement car le service privilégié Docker Desktop
-  est arrêté et la session actuelle n’a pas le droit Windows de le démarrer.
+
+## Recommandation hybride
+
+Le job `spark_recommender.py` entraîne ALS sur les utilisateurs possédant au moins deux
+interactions. Il reclasse les candidats avec les profils NLP calculés depuis `reviews_enriched` :
+65 % ALS, 25 % qualité NLP et 10 % popularité. Les résultats explicables sont matérialisés dans
+`user_recommendations`, avec un classement de secours dans `recommendation_fallbacks`.
 
 ## Commandes de lancement
 
