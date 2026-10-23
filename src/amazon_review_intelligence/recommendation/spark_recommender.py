@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import os
+import time
 from datetime import datetime, timezone
 
 from pyspark.ml.recommendation import ALS
@@ -193,17 +194,48 @@ def load_product_profiles(spark: SparkSession) -> DataFrame:
     return spark.createDataFrame(rows, PROFILE_SCHEMA)
 
 
-def write_recommendation_partition(rows) -> None:
-    """Write recommendation documents from one Spark partition using idempotent upserts."""
+def write_recommendations(rows) -> int:
+    """Write recommendations serially with retryable, idempotent MongoDB batches."""
     from pymongo import MongoClient, UpdateOne
+    from pymongo.errors import PyMongoError
 
-    client = MongoClient(os.getenv("ARI_MONGODB_URI", "mongodb://mongodb:27017"))
+    client = MongoClient(
+        os.getenv("ARI_MONGODB_URI", "mongodb://mongodb:27017"),
+        connectTimeoutMS=5_000,
+        serverSelectionTimeoutMS=5_000,
+        socketTimeoutMS=120_000,
+    )
     collection = client[os.getenv("ARI_MONGODB_DATABASE", "amazon_reviews")][
         "user_recommendations"
     ]
     version = os.getenv("ARI_RECOMMENDATION_MODEL_VERSION", "hybrid-als-nlp-v1")
     generated_at = datetime.now(timezone.utc)
+    max_attempts = int(os.getenv("ARI_MONGODB_MAX_RETRIES", "30"))
+    retry_delay = float(os.getenv("ARI_MONGODB_RETRY_DELAY_SECONDS", "2"))
     operations = []
+    total = 0
+
+    def flush() -> None:
+        nonlocal total
+        for attempt in range(1, max_attempts + 1):
+            try:
+                collection.bulk_write(operations, ordered=False)
+                total += len(operations)
+                operations.clear()
+                print(f"recommendations_written={total}", flush=True)
+                return
+            except PyMongoError as error:
+                if attempt == max_attempts:
+                    raise
+                wait_seconds = min(retry_delay * (2 ** min(attempt - 1, 4)), 30.0)
+                print(
+                    f"mongo_retry operation=recommendation_bulk_write "
+                    f"attempt={attempt}/{max_attempts} wait_seconds={wait_seconds:.1f} "
+                    f"error={error}",
+                    flush=True,
+                )
+                time.sleep(wait_seconds)
+
     for row in rows:
         document = row.asDict(recursive=True)
         document["model_version"] = version
@@ -211,12 +243,12 @@ def write_recommendation_partition(rows) -> None:
         operations.append(
             UpdateOne({"user_id": document["user_id"]}, {"$set": document}, upsert=True)
         )
-        if len(operations) >= 250:
-            collection.bulk_write(operations, ordered=False)
-            operations.clear()
+        if len(operations) >= 100:
+            flush()
     if operations:
-        collection.bulk_write(operations, ordered=False)
+        flush()
     client.close()
+    return total
 
 
 def store_fallback_recommendations(limit: int = 100) -> None:
@@ -378,7 +410,7 @@ def main() -> None:
     recommendation_documents = ranked.groupBy("user_id").agg(
         F.sort_array(F.collect_list("recommendation")).alias("recommendations")
     )
-    recommendation_documents.rdd.foreachPartition(write_recommendation_partition)
+    write_recommendations(recommendation_documents.toLocalIterator())
 
     store_fallback_recommendations()
     from pymongo import ASCENDING, DESCENDING, MongoClient
