@@ -4,7 +4,6 @@ import math
 import os
 from datetime import datetime, timezone
 
-from pyspark.ml.feature import StringIndexer
 from pyspark.ml.recommendation import ALS
 from pyspark.sql import DataFrame, SparkSession, Window, functions as F, types as T
 
@@ -27,6 +26,27 @@ PROFILE_SCHEMA = T.StructType(
         T.StructField("quality_score", T.DoubleType(), False),
     ]
 )
+
+
+def build_distributed_index(
+    frame: DataFrame, value_column: str, index_column: str
+) -> DataFrame:
+    """Assign compact integer IDs without collecting every label on the driver."""
+    schema = T.StructType(
+        [
+            T.StructField(value_column, T.StringType(), False),
+            T.StructField(index_column, T.IntegerType(), False),
+        ]
+    )
+    indexed_rows = (
+        frame.select(value_column)
+        .distinct()
+        .repartition(value_column)
+        .rdd.map(lambda row: row[value_column])
+        .zipWithIndex()
+        .map(lambda pair: (pair[0], int(pair[1])))
+    )
+    return frame.sparkSession.createDataFrame(indexed_rows, schema)
 
 
 def rebuild_product_profiles() -> int:
@@ -246,6 +266,7 @@ def main() -> None:
         SparkSession.builder.appName("amazon-review-hybrid-recommender")
         .config("spark.sql.shuffle.partitions", os.getenv("ARI_SPARK_SHUFFLE_PARTITIONS", "32"))
         .config("spark.sql.adaptive.enabled", "false")
+        .config("spark.sql.autoBroadcastJoinThreshold", "-1")
         .getOrCreate()
     )
     spark.sparkContext.setLogLevel("WARN")
@@ -273,22 +294,14 @@ def main() -> None:
     )
     interactions = interactions.join(eligible_users, "user_id", "inner").cache()
 
-    user_indexer = StringIndexer(inputCol="user_id", outputCol="user_index", handleInvalid="skip")
-    product_indexer = StringIndexer(
-        inputCol="product_id", outputCol="product_index", handleInvalid="skip"
-    )
-    user_model = user_indexer.fit(interactions)
-    indexed_users = user_model.transform(interactions)
-    product_model = product_indexer.fit(indexed_users)
+    user_map = build_distributed_index(interactions, "user_id", "user_index")
+    product_map = build_distributed_index(interactions, "product_id", "product_index")
     indexed = (
-        product_model.transform(indexed_users)
-        .withColumn("user_index", F.col("user_index").cast("integer"))
-        .withColumn("product_index", F.col("product_index").cast("integer"))
+        interactions.join(user_map, "user_id", "inner")
+        .join(product_map, "product_id", "inner")
         .cache()
     )
 
-    user_map = indexed.select("user_index", "user_id").distinct()
-    product_map = indexed.select("product_index", "product_id").distinct()
     seen = indexed.select("user_id", "product_id").distinct()
 
     als = ALS(
@@ -314,7 +327,7 @@ def main() -> None:
         .join(user_map, "user_index")
         .join(product_map, "product_index")
         .join(seen, ["user_id", "product_id"], "left_anti")
-        .join(F.broadcast(profiles), "product_id", "inner")
+        .join(profiles, "product_id", "inner")
     )
 
     als_normalized = F.greatest(
