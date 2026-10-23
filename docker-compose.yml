@@ -117,19 +117,19 @@ services:
       ARI_MONGODB_DATABASE: amazon_reviews
       ARI_RECOMMENDATION_INPUT: /opt/app/data/clean/reviews_*.jsonl
       ARI_RECOMMENDATION_TOP_K: 10
-      ARI_RECOMMENDATION_CANDIDATES: 30
+      ARI_RECOMMENDATION_CANDIDATES: 20
       ARI_RECOMMENDATION_MIN_USER_INTERACTIONS: 2
       ARI_RECOMMENDATION_MODEL_VERSION: hybrid-als-nlp-v1
-      ARI_ALS_RANK: 16
-      ARI_ALS_MAX_ITER: 8
+      ARI_ALS_RANK: 8
+      ARI_ALS_MAX_ITER: 5
       ARI_ALS_REG_PARAM: 0.1
-      ARI_SPARK_SHUFFLE_PARTITIONS: 16
+      ARI_SPARK_SHUFFLE_PARTITIONS: 32
     command:
       - /opt/spark/bin/spark-submit
       - --master
-      - local[*]
+      - local[2]
       - --driver-memory
-      - 3g
+      - 2g
       - /opt/app/src/amazon_review_intelligence/recommendation/spark_recommender.py
     volumes:
       - ./data/clean:/opt/app/data/clean:ro

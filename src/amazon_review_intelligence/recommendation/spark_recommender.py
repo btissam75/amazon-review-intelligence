@@ -239,12 +239,12 @@ def main() -> None:
         "ARI_RECOMMENDATION_INPUT", "/opt/app/data/clean/reviews_*.jsonl"
     )
     top_k = int(os.getenv("ARI_RECOMMENDATION_TOP_K", "10"))
-    candidate_count = max(top_k, int(os.getenv("ARI_RECOMMENDATION_CANDIDATES", "30")))
+    candidate_count = max(top_k, int(os.getenv("ARI_RECOMMENDATION_CANDIDATES", "20")))
     min_user_interactions = int(os.getenv("ARI_RECOMMENDATION_MIN_USER_INTERACTIONS", "2"))
 
     spark = (
         SparkSession.builder.appName("amazon-review-hybrid-recommender")
-        .config("spark.sql.shuffle.partitions", os.getenv("ARI_SPARK_SHUFFLE_PARTITIONS", "16"))
+        .config("spark.sql.shuffle.partitions", os.getenv("ARI_SPARK_SHUFFLE_PARTITIONS", "32"))
         .config("spark.sql.adaptive.enabled", "false")
         .getOrCreate()
     )
@@ -295,8 +295,8 @@ def main() -> None:
         userCol="user_index",
         itemCol="product_index",
         ratingCol="rating",
-        rank=int(os.getenv("ARI_ALS_RANK", "16")),
-        maxIter=int(os.getenv("ARI_ALS_MAX_ITER", "8")),
+        rank=int(os.getenv("ARI_ALS_RANK", "8")),
+        maxIter=int(os.getenv("ARI_ALS_MAX_ITER", "5")),
         regParam=float(os.getenv("ARI_ALS_REG_PARAM", "0.1")),
         nonnegative=True,
         coldStartStrategy="drop",
