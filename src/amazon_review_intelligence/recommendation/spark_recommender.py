@@ -194,6 +194,27 @@ def load_product_profiles(spark: SparkSession) -> DataFrame:
     return spark.createDataFrame(rows, PROFILE_SCHEMA)
 
 
+def load_existing_recommendation_users(spark: SparkSession) -> DataFrame:
+    """Load users already completed for this model so interrupted runs can resume."""
+    from pymongo import MongoClient
+
+    version = os.getenv("ARI_RECOMMENDATION_MODEL_VERSION", "hybrid-als-nlp-v1")
+    client = MongoClient(os.getenv("ARI_MONGODB_URI", "mongodb://mongodb:27017"))
+    collection = client[os.getenv("ARI_MONGODB_DATABASE", "amazon_reviews")][
+        "user_recommendations"
+    ]
+    rows = [
+        (str(document["user_id"]),)
+        for document in collection.find(
+            {"model_version": version}, {"_id": 0, "user_id": 1}, batch_size=5_000
+        )
+        if document.get("user_id") is not None
+    ]
+    client.close()
+    schema = T.StructType([T.StructField("user_id", T.StringType(), False)])
+    return spark.createDataFrame(rows, schema)
+
+
 def write_recommendations(rows) -> int:
     """Write recommendations serially with retryable, idempotent MongoDB batches."""
     from pymongo import MongoClient, UpdateOne
@@ -326,8 +347,14 @@ def main() -> None:
     )
     interactions = interactions.join(eligible_users, "user_id", "inner").cache()
 
-    user_map = build_distributed_index(interactions, "user_id", "user_index")
-    product_map = build_distributed_index(interactions, "product_id", "product_index")
+    user_map = build_distributed_index(interactions, "user_id", "user_index").cache()
+    product_map = build_distributed_index(
+        interactions, "product_id", "product_index"
+    ).cache()
+    existing_users = load_existing_recommendation_users(spark)
+    users_to_recommend = user_map.join(existing_users, "user_id", "left_anti").cache()
+    pending_user_count = users_to_recommend.count()
+    print(f"recommendation_users_pending={pending_user_count}", flush=True)
     indexed = (
         interactions.join(user_map, "user_id", "inner")
         .join(product_map, "product_id", "inner")
@@ -349,14 +376,16 @@ def main() -> None:
     )
     model = als.fit(indexed)
     candidates = (
-        model.recommendForAllUsers(candidate_count)
+        model.recommendForUserSubset(
+            users_to_recommend.select("user_index"), candidate_count
+        )
         .select("user_index", F.explode("recommendations").alias("recommendation"))
         .select(
             "user_index",
             F.col("recommendation.product_index").alias("product_index"),
             F.col("recommendation.rating").cast("double").alias("als_prediction"),
         )
-        .join(user_map, "user_index")
+        .join(users_to_recommend, "user_index")
         .join(product_map, "product_index")
         .join(seen, ["user_id", "product_id"], "left_anti")
         .join(profiles, "product_id", "inner")
@@ -410,7 +439,12 @@ def main() -> None:
     recommendation_documents = ranked.groupBy("user_id").agg(
         F.sort_array(F.collect_list("recommendation")).alias("recommendations")
     )
-    write_recommendations(recommendation_documents.toLocalIterator())
+    written_user_count = write_recommendations(recommendation_documents.toLocalIterator())
+    if written_user_count != pending_user_count:
+        raise RuntimeError(
+            "Recommendation coverage is incomplete: "
+            f"expected {pending_user_count}, wrote {written_user_count}"
+        )
 
     store_fallback_recommendations()
     from pymongo import ASCENDING, DESCENDING, MongoClient
