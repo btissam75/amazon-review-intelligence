@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import http.client
 import json
 import os
 import time
+import urllib.error
 import urllib.request
 from collections.abc import Iterable
 from datetime import datetime, timezone
@@ -84,18 +86,55 @@ def metadata_update(row: dict[str, Any], category: str) -> tuple[str, dict[str, 
     }
 
 
-def _rows(url: str) -> Iterable[dict[str, Any]]:
-    request = urllib.request.Request(url, headers={"User-Agent": "ARI-Metadata-Enricher/1.0"})
-    with urllib.request.urlopen(request, timeout=120) as response:
-        with gzip.GzipFile(fileobj=response) as stream:
-            for raw_line in stream:
-                try:
-                    yield json.loads(raw_line)
-                except (json.JSONDecodeError, UnicodeDecodeError):
-                    continue
+def _rows(url: str, max_retries: int = 8) -> Iterable[dict[str, Any]]:
+    """Stream gzip JSONL and resume at the last complete line after a network drop."""
+    emitted_lines = 0
+    retryable_errors = (
+        EOFError,
+        OSError,
+        TimeoutError,
+        urllib.error.URLError,
+        http.client.IncompleteRead,
+    )
+
+    for attempt in range(1, max_retries + 1):
+        current_line = 0
+        try:
+            request = urllib.request.Request(
+                url,
+                headers={"User-Agent": "ARI-Metadata-Enricher/1.0"},
+            )
+            with urllib.request.urlopen(request, timeout=120) as response:
+                with gzip.GzipFile(fileobj=response) as stream:
+                    for raw_line in stream:
+                        current_line += 1
+                        if current_line <= emitted_lines:
+                            continue
+                        emitted_lines = current_line
+                        try:
+                            yield json.loads(raw_line)
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            continue
+            return
+        except retryable_errors as error:
+            if attempt >= max_retries:
+                raise
+            wait_seconds = min(30, 2**attempt)
+            print(
+                f"metadata_stream_retry attempt={attempt}/{max_retries} "
+                f"resume_line={emitted_lines} wait_seconds={wait_seconds} error={error}",
+                flush=True,
+            )
+            time.sleep(wait_seconds)
 
 
-def enrich_category(collection, category: str, batch_size: int = 1_000) -> dict[str, int]:
+def enrich_category(
+    collection,
+    category: str,
+    batch_size: int = 1_000,
+    max_retries: int = 8,
+    force: bool = False,
+) -> dict[str, int]:
     url = METADATA_URL.format(category=category)
     scanned = matched = modified = 0
     operations: list[UpdateOne] = []
@@ -110,12 +149,15 @@ def enrich_category(collection, category: str, batch_size: int = 1_000) -> dict[
         modified += result.modified_count
         operations = []
 
-    for row in _rows(url):
+    for row in _rows(url, max_retries=max_retries):
         scanned += 1
         update = metadata_update(row, category)
         if update:
             product_id, fields = update
-            operations.append(UpdateOne({"product_id": product_id}, {"$set": fields}))
+            product_filter: dict[str, Any] = {"product_id": product_id}
+            if not force:
+                product_filter["metadata_source"] = {"$ne": "amazon_reviews_2023"}
+            operations.append(UpdateOne(product_filter, {"$set": fields}))
         if len(operations) >= batch_size:
             flush()
         if scanned % 25_000 == 0:
@@ -132,6 +174,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Enrich product profiles with Amazon metadata")
     parser.add_argument("--categories", nargs="+", default=list(DEFAULT_CATEGORIES))
     parser.add_argument("--batch-size", type=int, default=1_000)
+    parser.add_argument("--max-retries", type=int, default=8)
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Refresh products that already contain Amazon metadata",
+    )
     args = parser.parse_args()
 
     client = MongoClient(
@@ -146,8 +194,17 @@ def main() -> None:
         default_language="none",
     )
 
+    already_enriched = products.count_documents({"metadata_source": "amazon_reviews_2023"})
+    print(f"metadata_resume existing_products={already_enriched}", flush=True)
+
     for category in args.categories:
-        result = enrich_category(products, category, max(100, args.batch_size))
+        result = enrich_category(
+            products,
+            category,
+            max(100, args.batch_size),
+            max(1, args.max_retries),
+            args.force,
+        )
         print(f"metadata_complete category={category} {result}", flush=True)
 
     enriched = products.count_documents({"name": {"$type": "string", "$ne": ""}})
