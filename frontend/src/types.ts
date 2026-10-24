@@ -32,6 +32,16 @@ export interface AnalyticsDetails {
 
 export interface ProductProfile {
   product_id: string
+  name: string
+  brand?: string
+  price?: number
+  image_url?: string
+  category: string
+  main_category?: string
+  metadata_available?: boolean
+  categories?: string[]
+  features?: string[]
+  description?: string[]
   review_count: number
   average_rating: number
   positive_ratio: number
@@ -39,6 +49,17 @@ export interface ProductProfile {
   verified_ratio: number
   average_confidence: number
   quality_score: number
+  review_highlight?: ReviewHighlight
+}
+
+export interface ReviewHighlight {
+  category?: string
+  title?: string
+  text?: string
+  rating?: number
+  sentiment_label?: string
+  sentiment_score?: number
+  helpful_vote?: number
 }
 
 export interface Review {
@@ -49,6 +70,8 @@ export interface Review {
   sentiment_label: string
   sentiment_score: number
   verified_purchase?: boolean
+  helpful_vote?: number
+  category?: string
   review_timestamp?: string
 }
 
@@ -62,6 +85,12 @@ export interface Recommendation {
   average_rating?: number
   review_count?: number
   reason?: string
+  name?: string
+  brand?: string
+  image_url?: string
+  category?: string
+  metadata_available?: boolean
+  review_highlight?: ReviewHighlight
 }
 
 export interface RecommendationResult {

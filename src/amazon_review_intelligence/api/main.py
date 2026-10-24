@@ -56,6 +56,78 @@ app.add_middleware(
 
 DatabaseDependency = Annotated[Database, Depends(get_database)]
 
+CATEGORY_NAMES = {
+    "All_Beauty": "Produit beauté et soin",
+    "Appliances": "Appareil pour la maison",
+}
+
+
+def _product_highlights(database: Database, product_ids: list[str]) -> dict[str, dict]:
+    if not product_ids:
+        return {}
+    rows = database["reviews_enriched"].aggregate(
+        [
+            {"$match": {"product_id": {"$in": product_ids}}},
+            {"$sort": {"product_id": 1, "helpful_vote": -1, "review_timestamp": -1}},
+            {
+                "$group": {
+                    "_id": "$product_id",
+                    "category": {"$first": "$category"},
+                    "title": {"$first": "$title"},
+                    "text": {"$first": "$text"},
+                    "rating": {"$first": "$rating"},
+                    "sentiment_label": {"$first": "$sentiment_label"},
+                    "sentiment_score": {"$first": "$sentiment_score"},
+                    "helpful_vote": {"$first": "$helpful_vote"},
+                }
+            },
+        ]
+    )
+    return {row.pop("_id"): row for row in rows}
+
+
+def _present_product(profile: dict, highlight: dict | None = None) -> dict:
+    highlight = highlight or {}
+    category_code = profile.get("metadata_category") or highlight.get("category")
+    category = profile.get("main_category") or CATEGORY_NAMES.get(
+        category_code, "Produit Amazon"
+    )
+    name = profile.get("name") or category
+    return {
+        **profile,
+        "name": name,
+        "category": category,
+        "metadata_available": bool(profile.get("name")),
+        "review_highlight": highlight or None,
+    }
+
+
+def _present_products(database: Database, profiles: list[dict]) -> list[dict]:
+    product_ids = [row["product_id"] for row in profiles if row.get("product_id")]
+    highlights = _product_highlights(database, product_ids)
+    return [
+        _present_product(profile, highlights.get(profile.get("product_id", "")))
+        for profile in profiles
+    ]
+
+
+def _present_recommendations(database: Database, recommendations: list[dict]) -> list[dict]:
+    product_ids = [row["product_id"] for row in recommendations if row.get("product_id")]
+    profiles = {
+        row["product_id"]: row
+        for row in database["product_profiles"].find(
+            {"product_id": {"$in": product_ids}}, {"_id": 0}
+        )
+    }
+    highlights = _product_highlights(database, product_ids)
+    presented = []
+    for recommendation in recommendations:
+        product_id = recommendation.get("product_id", "")
+        profile = profiles.get(product_id, {"product_id": product_id})
+        product = _present_product(profile, highlights.get(product_id))
+        presented.append({**product, **recommendation})
+    return presented
+
 
 @app.get("/", include_in_schema=False)
 def root() -> dict:
@@ -217,7 +289,13 @@ def list_products(
 ) -> dict:
     query: dict = {"quality_score": {"$gte": min_quality}}
     if search:
-        query["product_id"] = {"$regex": f"^{re.escape(search)}", "$options": "i"}
+        expression = {"$regex": re.escape(search.strip()), "$options": "i"}
+        query["$or"] = [
+            {"name": expression},
+            {"brand": expression},
+            {"main_category": expression},
+            {"product_id": expression},
+        ]
     projection = {"_id": 0}
     cursor = (
         database["product_profiles"]
@@ -226,7 +304,7 @@ def list_products(
         .skip(offset)
         .limit(limit)
     )
-    items = list(cursor)
+    items = _present_products(database, list(cursor))
     return {
         "items": items,
         "pagination": {"offset": offset, "limit": limit, "returned": len(items)},
@@ -255,19 +333,25 @@ def product_detail(
                 "sentiment_label": 1,
                 "sentiment_score": 1,
                 "verified_purchase": 1,
+                "helpful_vote": 1,
+                "category": 1,
                 "review_timestamp": 1,
             },
         )
-        .sort("review_timestamp", DESCENDING)
+        .sort([("helpful_vote", DESCENDING), ("review_timestamp", DESCENDING)])
         .limit(review_limit)
     )
-    return {"profile": profile, "reviews": reviews}
+    highlight = reviews[0] if reviews else None
+    return {"profile": _present_product(profile, highlight), "reviews": reviews}
 
 
 @app.get("/api/v1/recommendations/{user_id}", tags=["recommendations"])
 def user_recommendations(user_id: str, database: DatabaseDependency) -> dict:
     result = database["user_recommendations"].find_one({"user_id": user_id}, {"_id": 0})
     if result:
+        result["recommendations"] = _present_recommendations(
+            database, result.get("recommendations", [])
+        )
         return {"personalized": True, **result}
     fallback = database["recommendation_fallbacks"].find_one(
         {"name": "quality_popularity"}, {"_id": 0}
@@ -278,7 +362,9 @@ def user_recommendations(user_id: str, database: DatabaseDependency) -> dict:
         "personalized": False,
         "user_id": user_id,
         "model_version": "quality-popularity-fallback-v1",
-        "recommendations": fallback.get("products", [])[:10],
+        "recommendations": _present_recommendations(
+            database, fallback.get("products", [])[:10]
+        ),
     }
 
 
@@ -289,6 +375,7 @@ def fallback_recommendations(database: DatabaseDependency) -> dict:
     )
     if not fallback:
         raise HTTPException(status_code=404, detail="Aucune recommandation disponible")
+    fallback["products"] = _present_recommendations(database, fallback.get("products", []))
     return fallback
 
 

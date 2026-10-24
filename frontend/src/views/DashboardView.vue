@@ -120,7 +120,7 @@ onMounted(() => store.load())
               :to="`/products?product=${product.product_id}`"
               class="table-row"
             >
-              <strong>{{ product.product_id }}</strong>
+              <strong class="table-product-name">{{ product.name }}<small>{{ product.brand || product.category }}</small></strong>
               <span><i class="quality-bar"><b :style="{ width: `${product.quality_score * 100}%` }" /></i>{{ Math.round(product.quality_score * 100) }}%</span>
               <span>{{ product.average_rating.toFixed(1) }} ★</span>
               <span>{{ number.format(product.review_count) }}</span>

@@ -101,6 +101,20 @@ Collections produites :
 - `recommendation_fallbacks` : meilleurs produits pour le démarrage à froid ;
 - `model_registry` : version, pondérations et état du modèle.
 
+## Enrichissement des produits
+
+Les avis utilisent des identifiants Amazon techniques. Le job d'enrichissement associe les
+profils existants aux métadonnées officielles Amazon Reviews'23 pour ajouter le nom commercial,
+la marque, l'image, le prix, la catégorie, les caractéristiques et la description. Il traite en
+streaming les catégories `All_Beauty` et `Appliances` sans charger les fichiers complets en mémoire.
+
+```powershell
+docker compose --profile metadata run --rm metadata-enricher
+```
+
+L'opération est idempotente : elle peut être relancée et ne modifie que les produits déjà présents
+dans `product_profiles`.
+
 ## API FastAPI
 
 L'API expose les indicateurs NLP, les profils produits, les recommandations personnalisées et
@@ -125,12 +139,13 @@ Documentation interactive : <http://localhost:8000/docs>.
 
 ## Dashboard Vue 3
 
-Le dashboard utilisateur fournit une vue d'ensemble, des graphiques NLP, un catalogue de
-produits, les recommandations personnalisées, un laboratoire d'inférence et l'état du pipeline.
+Le dashboard utilisateur fournit une vue d'ensemble, des graphiques NLP, un catalogue lisible
+avec noms et commentaires clients, les recommandations personnalisées et explicables, un
+laboratoire d'inférence et l'état du pipeline. L'identifiant Amazon reste disponible comme
+référence secondaire, mais n'est plus utilisé comme nom du produit.
 
 ```powershell
 docker compose up -d --build frontend
 ```
 
 Interface : <http://localhost:3000>. Le service démarre automatiquement l'API et MongoDB.
-

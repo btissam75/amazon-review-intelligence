@@ -14,6 +14,11 @@ const loading = ref(false)
 const error = ref('')
 const number = new Intl.NumberFormat('fr-FR')
 
+function preferenceScore(value?: number) {
+  if (value == null) return 0
+  return Math.round(Math.max(0, Math.min(1, (value - 1) / 4)) * 100)
+}
+
 async function loadRecommendations(value = userId.value) {
   if (!value.trim()) return
   userId.value = value
@@ -70,10 +75,21 @@ onMounted(async () => {
       <section class="recommendation-grid">
         <article v-for="(item, index) in result.recommendations" :key="item.product_id" class="recommendation-card">
           <span class="rank-number">#{{ item.rank || index + 1 }}</span>
-          <div class="recommendation-icon">{{ item.product_id.slice(0, 2).toUpperCase() }}</div>
-          <div class="recommendation-main"><h2>{{ item.product_id }}</h2><p>{{ item.reason || 'Produit populaire à forte qualité client' }}</p></div>
+          <img v-if="item.image_url" :src="item.image_url" :alt="item.name || 'Produit recommandé'" class="recommendation-image" loading="lazy" />
+          <div v-else class="recommendation-icon">{{ (item.category || 'Produit').slice(0, 2).toUpperCase() }}</div>
+          <div class="recommendation-main">
+            <span>{{ item.brand || item.category || 'Sélection personnalisée' }}</span>
+            <h2>{{ item.name || 'Produit recommandé' }}</h2>
+            <small>Référence {{ item.product_id }}</small>
+            <p>{{ item.reason || 'Produit populaire à forte qualité client' }}</p>
+          </div>
           <div class="recommendation-score"><strong>{{ Math.round((item.score ?? item.quality_score ?? 0) * 100) }}</strong><span>score</span></div>
           <div class="recommendation-meta"><span v-if="item.average_rating">{{ item.average_rating.toFixed(1) }} ★</span><span v-if="item.positive_ratio">{{ Math.round(item.positive_ratio * 100) }}% positifs</span><span v-if="item.review_count">{{ number.format(item.review_count) }} avis</span></div>
+          <blockquote v-if="item.review_highlight?.text" class="recommendation-comment">“{{ item.review_highlight.text.slice(0, 170) }}{{ item.review_highlight.text.length > 170 ? '…' : '' }}”</blockquote>
+          <div class="score-explanation">
+            <span><i :style="{ width: `${preferenceScore(item.als_prediction)}%` }" />Affinité {{ preferenceScore(item.als_prediction) }}%</span>
+            <span><i :style="{ width: `${Math.round((item.quality_score || 0) * 100)}%` }" />Qualité NLP {{ Math.round((item.quality_score || 0) * 100) }}%</span>
+          </div>
           <RouterLink :to="`/products?product=${item.product_id}`" class="card-link">Voir l'analyse <ArrowRight :size="15" /></RouterLink>
         </article>
       </section>
