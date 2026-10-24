@@ -83,12 +83,19 @@ def analytics_overview(database: DatabaseDependency) -> dict:
     def calculate() -> dict:
         registry = database["model_registry"].find_one(
             {"model_version": "hybrid-als-nlp-v1"},
-            {"_id": 0, "status": 1, "model_version": 1, "trained_at": 1},
+            {
+                "_id": 0,
+                "status": 1,
+                "model_version": 1,
+                "trained_at": 1,
+                "recommendation_documents": 1,
+            },
         )
         return {
-            "reviews": database["reviews_enriched"].estimated_document_count(),
-            "products": database["product_profiles"].estimated_document_count(),
-            "recommendation_users": database["user_recommendations"].estimated_document_count(),
+            "reviews": database["reviews_enriched"].count_documents({}),
+            "products": database["product_profiles"].count_documents({}),
+            "recommendation_users": (registry or {}).get("recommendation_documents")
+            or database["user_recommendations"].count_documents({}),
             "model": registry,
         }
 
