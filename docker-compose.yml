@@ -81,6 +81,20 @@ services:
       retries: 10
       start_period: 30s
 
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/frontend.Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000
+    container_name: ari-dashboard
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+
   spark-streaming:
     build:
       context: .

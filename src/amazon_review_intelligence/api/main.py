@@ -137,6 +137,76 @@ def sentiment_distribution(database: DatabaseDependency) -> dict:
     return cache.get_or_create("sentiments", 300, calculate)
 
 
+@app.get("/api/v1/analytics/details", tags=["analytics"])
+def analytics_details(database: DatabaseDependency) -> dict:
+    def calculate() -> dict:
+        result = list(
+            database["reviews_enriched"].aggregate(
+                [
+                    {
+                        "$facet": {
+                            "ratings": [
+                                {"$group": {"_id": "$rating", "total": {"$sum": 1}}},
+                                {"$sort": {"_id": 1}},
+                            ],
+                            "verification": [
+                                {
+                                    "$group": {
+                                        "_id": None,
+                                        "total": {"$sum": 1},
+                                        "verified": {
+                                            "$sum": {"$cond": ["$verified_purchase", 1, 0]}
+                                        },
+                                    }
+                                }
+                            ],
+                            "categories": [
+                                {"$group": {"_id": "$category", "total": {"$sum": 1}}},
+                                {"$sort": {"total": -1}},
+                                {"$limit": 8},
+                            ],
+                        }
+                    }
+                ],
+                allowDiskUse=True,
+            )
+        )[0]
+        verification = (result.get("verification") or [{}])[0]
+        total = verification.get("total", 0)
+        verified = verification.get("verified", 0)
+        return {
+            "ratings": [
+                {"rating": row["_id"], "total": row["total"]}
+                for row in result.get("ratings", [])
+            ],
+            "verified": {
+                "total": total,
+                "verified": verified,
+                "percentage": round(100 * verified / total, 2) if total else 0.0,
+            },
+            "categories": [
+                {"category": row["_id"] or "Sans catégorie", "total": row["total"]}
+                for row in result.get("categories", [])
+            ],
+        }
+
+    return cache.get_or_create("analytics-details", 300, calculate)
+
+
+@app.get("/api/v1/users/sample", tags=["recommendations"])
+def sample_users(
+    database: DatabaseDependency,
+    limit: Annotated[int, Query(ge=1, le=20)] = 6,
+) -> dict:
+    users = list(
+        database["user_recommendations"].find(
+            {"model_version": "hybrid-als-nlp-v1"},
+            {"_id": 0, "user_id": 1},
+        ).limit(limit)
+    )
+    return {"items": [row["user_id"] for row in users]}
+
+
 @app.get("/api/v1/products", tags=["products"])
 def list_products(
     database: DatabaseDependency,

@@ -123,3 +123,14 @@ Points d'entrée principaux :
 
 Documentation interactive : <http://localhost:8000/docs>.
 
+## Dashboard Vue 3
+
+Le dashboard utilisateur fournit une vue d'ensemble, des graphiques NLP, un catalogue de
+produits, les recommandations personnalisées, un laboratoire d'inférence et l'état du pipeline.
+
+```powershell
+docker compose up -d --build frontend
+```
+
+Interface : <http://localhost:3000>. Le service démarre automatiquement l'API et MongoDB.
+
