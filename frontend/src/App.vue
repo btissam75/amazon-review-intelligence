@@ -2,11 +2,14 @@
 import { Menu, Moon, Sun } from '@lucide/vue'
 import { onMounted, ref, watch } from 'vue'
 import { RouterView } from 'vue-router'
+import { useRoute } from 'vue-router'
 
 import AppSidebar from './components/AppSidebar.vue'
+import JourneyBar from './components/JourneyBar.vue'
 
 const sidebarOpen = ref(false)
 const dark = ref(localStorage.getItem('ari-theme') !== 'light')
+const route = useRoute()
 
 function applyTheme() {
   document.documentElement.dataset.theme = dark.value ? 'dark' : 'light'
@@ -41,6 +44,7 @@ onMounted(applyTheme)
         <Sun v-if="dark" :size="18" />
         <Moon v-else :size="18" />
       </button>
+      <JourneyBar v-if="route.path !== '/system'" />
       <RouterView />
     </main>
   </div>

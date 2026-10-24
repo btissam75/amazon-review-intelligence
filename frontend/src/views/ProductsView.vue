@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from '@lucide/vue'
 import { onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 
 import { api, errorMessage } from '../api/client'
 import PageHeader from '../components/PageHeader.vue'
@@ -138,6 +138,7 @@ onMounted(async () => {
               <div><span :class="`sentiment-badge ${review.sentiment_label}`">{{ sentimentLabel(review.sentiment_label) }}</span><span>{{ review.rating }} ★</span></div>
               <strong v-if="review.title">{{ review.title }}</strong><p>{{ review.text }}</p>
               <small>Confiance NLP {{ Math.round(review.sentiment_score * 100) }}%<template v-if="review.verified_purchase"> · Achat vérifié</template><template v-if="review.helpful_vote"> · {{ review.helpful_vote }} utile{{ review.helpful_vote > 1 ? 's' : '' }}</template></small>
+              <RouterLink :to="{ path: '/nlp', query: { text: review.text } }" class="review-analyze">Analyser cet avis dans le laboratoire NLP →</RouterLink>
             </article>
           </div>
         </template>

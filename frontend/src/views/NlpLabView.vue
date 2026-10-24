@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { BrainCircuit, Eraser, Send, ShieldCheck } from '@lucide/vue'
-import { computed, ref } from 'vue'
+import { ArrowRight, BrainCircuit, Eraser, Send, ShieldCheck } from '@lucide/vue'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 
 import { api, errorMessage } from '../api/client'
 import PageHeader from '../components/PageHeader.vue'
 
 const text = ref('This product is excellent, reliable and easy to use. I highly recommend it!')
+const route = useRoute()
 const loading = ref(false)
 const error = ref('')
 const result = ref<{ label: string; confidence: number } | null>(null)
@@ -34,6 +36,12 @@ async function analyze() {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  if (typeof route.query.text === 'string' && route.query.text.trim()) {
+    text.value = route.query.text.slice(0, 10_000)
+  }
+})
 </script>
 
 <template>
@@ -59,6 +67,7 @@ async function analyze() {
           <div class="confidence-value"><strong>{{ Math.round(result.confidence * 100) }}%</strong><span>de confiance</span></div>
           <div class="confidence-track"><i :style="{ width: `${result.confidence * 100}%` }" /></div>
           <div class="model-note"><ShieldCheck :size="18" /><span>Prédiction générée par le même modèle que le pipeline Spark.</span></div>
+          <RouterLink to="/recommendations" class="primary-button nlp-next">Étape suivante : recommander <ArrowRight :size="16" /></RouterLink>
         </template>
         <template v-else>
           <div class="empty-orb"><BrainCircuit :size="34" /></div><h2>Prêt pour l'analyse</h2><p>Le résultat et son niveau de confiance apparaîtront ici.</p>

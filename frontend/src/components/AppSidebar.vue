@@ -14,11 +14,10 @@ defineProps<{ open: boolean }>()
 defineEmits<{ close: [] }>()
 
 const navigation = [
-  { to: '/', label: "Vue d'ensemble", icon: LayoutDashboard },
-  { to: '/products', label: 'Produits', icon: PackageSearch },
-  { to: '/recommendations', label: 'Recommandations', icon: Sparkles },
-  { to: '/nlp', label: 'Laboratoire NLP', icon: BrainCircuit },
-  { to: '/system', label: 'Pipeline & système', icon: Activity },
+  { to: '/', label: "Vue d'ensemble", detail: 'Comprendre', step: '01', icon: LayoutDashboard },
+  { to: '/products', label: 'Produits & avis', detail: 'Explorer', step: '02', icon: PackageSearch },
+  { to: '/nlp', label: 'Analyse NLP', detail: 'Analyser', step: '03', icon: BrainCircuit },
+  { to: '/recommendations', label: 'Recommandations', detail: 'Décider', step: '04', icon: Sparkles },
 ]
 </script>
 
@@ -42,9 +41,14 @@ const navigation = [
         @click="$emit('close')"
       >
         <component :is="item.icon" :size="19" />
-        <span>{{ item.label }}</span>
+        <span class="nav-copy"><strong>{{ item.label }}</strong><small>{{ item.step }} · {{ item.detail }}</small></span>
       </RouterLink>
     </nav>
+
+    <RouterLink to="/system" class="nav-link technical-link" @click="$emit('close')">
+      <Activity :size="19" />
+      <span class="nav-copy"><strong>Pipeline & système</strong><small>Espace technique</small></span>
+    </RouterLink>
 
     <div class="sidebar-status">
       <div class="status-line"><span class="status-dot" /> Système opérationnel</div>

@@ -57,12 +57,15 @@ onMounted(async () => {
     />
 
     <section class="recommendation-search panel">
-      <div><UserRound :size="22" /><div><strong>Identifiant utilisateur</strong><span>Saisissez un utilisateur ou choisissez un profil de démonstration.</span></div></div>
-      <form @submit.prevent="loadRecommendations()">
-        <label class="search-field"><Search :size="18" /><input v-model="userId" required placeholder="user_id…" /></label>
-        <button class="primary-button" :disabled="loading"><Sparkles :size="17" /> Recommander</button>
-      </form>
-      <div v-if="samples.length" class="sample-users"><span>Profils exemples</span><button v-for="sample in samples" :key="sample" @click="loadRecommendations(sample)">{{ sample.slice(0, 12) }}…</button></div>
+      <div><UserRound :size="22" /><div><strong>Choisissez un profil client</strong><span>Aucun identifiant technique n'est nécessaire pour tester l'expérience.</span></div></div>
+      <div v-if="samples.length" class="sample-users profile-choices"><span>Profils de démonstration</span><button v-for="(sample, index) in samples" :key="sample" :class="{ active: sample === userId }" @click="loadRecommendations(sample)">Profil {{ index + 1 }}</button></div>
+      <details class="advanced-id">
+        <summary>Utiliser un identifiant utilisateur précis</summary>
+        <form @submit.prevent="loadRecommendations()">
+          <label class="search-field"><Search :size="18" /><input v-model="userId" required placeholder="Identifiant utilisateur…" /></label>
+          <button class="primary-button" :disabled="loading"><Sparkles :size="17" /> Recommander</button>
+        </form>
+      </details>
     </section>
 
     <StateNotice :loading="loading" :message="error" />
