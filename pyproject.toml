@@ -17,6 +17,13 @@ dependencies = [
 data = []
 nlp = ["scikit-learn>=1.5,<2", "joblib>=1.4,<2"]
 streaming = ["kafka-python-ng>=2.2,<3", "pymongo>=4.10,<5"]
+api = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.32,<1",
+  "pymongo>=4.10,<5",
+  "scikit-learn>=1.5,<2",
+  "joblib>=1.4,<2",
+]
 dev = ["pytest>=8,<10", "ruff>=0.6,<1"]
 
 [project.scripts]

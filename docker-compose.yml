@@ -56,6 +56,31 @@ services:
     volumes:
       - mongo-data:/data/db
 
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/api.Dockerfile
+    container_name: ari-api
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      ARI_MONGODB_URI: mongodb://mongodb:27017
+      ARI_MONGODB_DATABASE: amazon_reviews
+      ARI_MODEL_PATH: /opt/app/models/sentiment_baseline.joblib
+      ARI_CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/opt/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   spark-streaming:
     build:
       context: .

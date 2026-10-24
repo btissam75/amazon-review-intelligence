@@ -101,3 +101,25 @@ Collections produites :
 - `recommendation_fallbacks` : meilleurs produits pour le démarrage à froid ;
 - `model_registry` : version, pondérations et état du modèle.
 
+## API FastAPI
+
+L'API expose les indicateurs NLP, les profils produits, les recommandations personnalisées et
+une prédiction de sentiment à la demande.
+
+```powershell
+docker compose up -d --build api
+```
+
+Points d'entrée principaux :
+
+- `GET /health`
+- `GET /api/v1/analytics/overview`
+- `GET /api/v1/analytics/sentiments`
+- `GET /api/v1/products`
+- `GET /api/v1/products/{product_id}`
+- `GET /api/v1/recommendations/{user_id}`
+- `GET /api/v1/recommendations`
+- `POST /api/v1/sentiment/predict`
+
+Documentation interactive : <http://localhost:8000/docs>.
+
