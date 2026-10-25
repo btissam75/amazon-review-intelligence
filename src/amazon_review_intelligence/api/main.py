@@ -336,7 +336,7 @@ def submit_human_annotation(
         "model_confidence": document.get("model_confidence"),
         "annotation_count": len(labels),
         "required_annotations": document.get("required_annotations", 1),
-        "agreement": len(set(labels)) <= 1,
+        "agreement": "uncertain" not in labels and len(set(labels)) <= 1,
     }
 
 

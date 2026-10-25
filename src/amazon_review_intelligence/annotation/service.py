@@ -48,15 +48,20 @@ def annotation_progress(collection, annotator: str | None = None) -> dict[str, A
         )
     )
     completed = sum(consensus_label(document) is not None for document in documents)
-    conflicts = sum(
-        len({row.get("label") for row in document.get("annotations", [])}) > 1
-        and not document.get("adjudicated_label")
-        for document in documents
-    )
+    conflicts = 0
+    for document in documents:
+        labels = [row.get("label") for row in document.get("annotations", [])]
+        valid_labels = {label for label in labels if label in LABELS}
+        if not document.get("adjudicated_label") and (
+            "uncertain" in labels or len(valid_labels) > 1
+        ):
+            conflicts += 1
     double_pairs = []
     for document in documents:
         annotations = document.get("annotations") or []
-        if len(annotations) >= 2:
+        if len(annotations) >= 2 and all(
+            annotation.get("label") in LABELS for annotation in annotations[:2]
+        ):
             double_pairs.append((annotations[0]["label"], annotations[1]["label"]))
     reviewed = 0
     if annotator:
@@ -106,8 +111,22 @@ def next_conflict_task(collection) -> dict[str, Any] | None:
     return collection.find_one(
         {
             "adjudicated_label": {"$exists": False},
-            "annotations.1": {"$exists": True},
-            "$expr": {"$gt": [{"$size": {"$setUnion": ["$annotations.label", []]}}, 1]},
+            "$or": [
+                {"annotations.label": "uncertain"},
+                {
+                    "$and": [
+                        {"annotations.1": {"$exists": True}},
+                        {
+                            "$expr": {
+                                "$gt": [
+                                    {"$size": {"$setUnion": ["$annotations.label", []]}},
+                                    1,
+                                ]
+                            }
+                        },
+                    ]
+                },
+            ],
         },
         {
             "_id": 0,

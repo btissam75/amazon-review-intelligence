@@ -7,13 +7,14 @@ import PageHeader from '../components/PageHeader.vue'
 import StateNotice from '../components/StateNotice.vue'
 
 type Label = 'negative' | 'neutral' | 'positive'
+type Decision = Label | 'uncertain'
 type AnnotationTask = {
   review_id: string
   title?: string
   text: string
   category?: string
   required_annotations: number
-  annotations?: { label: Label; notes?: string }[]
+  annotations?: { label: Decision; notes?: string }[]
 }
 type Progress = {
   total: number
@@ -44,14 +45,15 @@ const error = ref('')
 const adjudicating = ref(false)
 const sessionStarted = ref(false)
 const canStart = computed(() => annotator.value.trim().length >= 2)
-const labels: { value: Label; title: string; shortcut: string; detail: string }[] = [
+const labels: { value: Decision; title: string; shortcut: string; detail: string }[] = [
   { value: 'negative', title: 'Négatif', shortcut: '1', detail: 'Insatisfaction ou critique dominante' },
   { value: 'neutral', title: 'Neutre', shortcut: '2', detail: 'Information factuelle ou opinion équilibrée' },
   { value: 'positive', title: 'Positif', shortcut: '3', detail: 'Satisfaction ou appréciation dominante' },
+  { value: 'uncertain', title: 'Incertain', shortcut: '4', detail: 'Ambigu, ironique ou contexte insuffisant' },
 ]
 
-function labelFr(label?: Label) {
-  return ({ negative: 'Négatif', neutral: 'Neutre', positive: 'Positif' } as Record<string, string>)[label || ''] || '—'
+function labelFr(label?: Decision) {
+  return ({ negative: 'Négatif', neutral: 'Neutre', positive: 'Positif', uncertain: 'Incertain' } as Record<string, string>)[label || ''] || '—'
 }
 
 async function loadProgress() {
@@ -89,7 +91,7 @@ async function start() {
   await loadNext()
 }
 
-async function submit(label: Label) {
+async function submit(label: Decision) {
   if (!task.value || loading.value || reveal.value) return
   loading.value = true
   error.value = ''
@@ -199,7 +201,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
       </section>
 
-      <div class="annotation-shortcuts"><Keyboard :size="16" /> Raccourcis : 1 négatif · 2 neutre · 3 positif</div>
+      <div class="annotation-shortcuts"><Keyboard :size="16" /> Raccourcis : 1 négatif · 2 neutre · 3 positif · 4 incertain</div>
     </template>
   </div>
 </template>

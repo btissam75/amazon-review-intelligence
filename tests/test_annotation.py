@@ -26,6 +26,14 @@ def test_conflicting_annotations_require_adjudication():
     assert consensus_label(document) == "neutral"
 
 
+def test_uncertain_annotation_requires_adjudication():
+    document = {
+        "required_annotations": 1,
+        "annotations": [{"annotator": "A", "label": "uncertain"}],
+    }
+    assert consensus_label(document) is None
+
+
 def test_cohen_kappa_reports_perfect_agreement():
     assert cohen_kappa([("positive", "positive"), ("negative", "negative")]) == pytest.approx(1.0)
 

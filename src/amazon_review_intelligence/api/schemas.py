@@ -16,7 +16,7 @@ class SentimentResponse(BaseModel):
 
 class AnnotationSubmission(BaseModel):
     annotator: str = Field(min_length=2, max_length=80)
-    label: Literal["negative", "neutral", "positive"]
+    label: Literal["negative", "neutral", "positive", "uncertain"]
     notes: str | None = Field(default=None, max_length=500)
 
 

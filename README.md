@@ -252,7 +252,8 @@ docker compose run --rm api python -m amazon_review_intelligence.annotation.boot
 
 Open <http://localhost:3000/annotations>. The annotation screen deliberately hides the Amazon
 rating and model prediction until the human decision is saved. Conflicting double annotations can
-be adjudicated from the same interface.
+be adjudicated from the same interface. Ambiguous reviews can be marked `uncertain`; they are
+excluded from the gold export until an expert adjudicates them.
 
 Export only completed consensus/adjudicated records:
 
