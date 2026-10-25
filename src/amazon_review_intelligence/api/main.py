@@ -433,6 +433,30 @@ def product_detail(
     return {"profile": _present_product(profile, highlight), "reviews": reviews}
 
 
+@app.get("/api/v1/recommendations/evaluation", tags=["recommendations"])
+def recommendation_evaluation(database: DatabaseDependency) -> dict:
+    """Expose the latest leakage-controlled offline evaluation."""
+
+    def calculate() -> dict:
+        evaluation = database["recommendation_evaluations"].find_one(
+            {"model_version": "hybrid-als-nlp-v1"}, {"_id": 0}
+        )
+        if not evaluation:
+            registry = database["model_registry"].find_one(
+                {"model_version": "hybrid-als-nlp-v1"},
+                {"_id": 0, "offline_evaluation": 1},
+            )
+            evaluation = (registry or {}).get("offline_evaluation")
+        if not evaluation:
+            raise HTTPException(
+                status_code=404,
+                detail="Evaluation hors ligne non encore exécutée",
+            )
+        return evaluation
+
+    return cache.get_or_create("recommendation-evaluation", 60, calculate)
+
+
 @app.get("/api/v1/recommendations/{user_id}", tags=["recommendations"])
 def user_recommendations(user_id: str, database: DatabaseDependency) -> dict:
     result = database["user_recommendations"].find_one({"user_id": user_id}, {"_id": 0})

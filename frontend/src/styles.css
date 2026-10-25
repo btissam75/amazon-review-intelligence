@@ -22,7 +22,6 @@
   --red: #ff6b82;
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
 }
-
 :root[data-theme='light'] {
   color: #18283a;
   background: #edf3f8;
@@ -107,7 +106,7 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
 .metric-copy small { color: var(--faint); font-size: .72rem; }
 .dashboard-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; }
 .dashboard-grid > .panel { min-height: 370px; padding: 23px; }
-.span-7 { grid-column: span 7; }.span-5 { grid-column: span 5; }.span-8 { grid-column: span 8; }.span-4 { grid-column: span 4; }
+.span-7 { grid-column: span 7; }.span-5 { grid-column: span 5; }.span-8 { grid-column: span 8; }.span-4 { grid-column: span 4; }.span-12 { grid-column: span 12; }
 .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
 .panel-heading span { color: var(--faint); font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; }
 .panel-heading h2 { margin: 4px 0 0; font-size: 1.08rem; }
@@ -130,6 +129,10 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
 .insight-panel { display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(145deg, rgba(22, 60, 80, .78), rgba(31, 24, 68, .75)); }
 .insight-panel > div > strong { display: block; margin: 15px 0 5px; font-size: 2.3rem; }.insight-panel p { color: var(--muted); line-height: 1.6; font-size: .84rem; }
 .coverage-orbit { align-self: center; width: 124px; height: 124px; border: 1px solid rgba(92, 214, 255, .28); border-radius: 50%; display: grid; place-content: center; text-align: center; box-shadow: inset 0 0 0 10px rgba(92, 214, 255, .04), 0 0 40px rgba(92, 214, 255, .08); }.coverage-orbit span { font-family: 'Manrope'; font-weight: 800; font-size: 1.45rem; }.coverage-orbit small { color: var(--muted); }
+.evaluation-panel { min-height: 0 !important; }
+.evaluation-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 12px; }.evaluation-meta span, .evaluation-meta strong { padding: 7px 10px; border-radius: 8px; color: var(--muted); background: var(--bg-soft); font-size: .68rem; }.evaluation-meta strong { color: var(--green); }
+.evaluation-table { overflow-x: auto; }.evaluation-row { min-width: 710px; display: grid; grid-template-columns: 1.5fr repeat(5, 1fr); gap: 12px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: .73rem; }.evaluation-head { min-height: 32px; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; font-size: .61rem; }.evaluation-row.winner { border-color: rgba(38,215,160,.18); color: var(--text); background: rgba(38,215,160,.05); }.evaluation-row.winner strong { color: var(--green); }
+.evaluation-note, .evaluation-empty p { color: var(--muted); font-size: .72rem; line-height: 1.55; }.evaluation-empty { margin-top: 18px; padding: 20px; border: 1px dashed var(--border); border-radius: 12px; }.evaluation-empty code { display: inline-block; max-width: 100%; padding: 9px; overflow-x: auto; border-radius: 8px; color: var(--cyan); background: var(--bg-soft); font-size: .68rem; }
 
 .state-notice { min-height: 100px; margin: 22px 0; display: flex; align-items: center; justify-content: center; gap: 14px; color: var(--cyan); }.state-notice div { display: grid; }.state-notice span { color: var(--muted); margin-top: 3px; font-size: .8rem; }.error-state { color: var(--red); }
 .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
@@ -195,7 +198,7 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none !important; 
   .mobile-brand { font: 800 .95rem 'Manrope'; letter-spacing: .1em; }.desktop-only { display: none; }
   .page-container { padding: 28px 20px 55px; }.page-header { min-height: 0; padding-right: 0; align-items: flex-start; }
   .journey-shell { padding: 18px 20px 0; }.journey-intro { display: none; }.journey-step div { display: none; }
-  .span-7, .span-5, .span-8, .span-4 { grid-column: span 12; }
+  .span-7, .span-5, .span-8, .span-4, .span-12 { grid-column: span 12; }
   .product-grid { grid-template-columns: repeat(2, 1fr); }
   .nlp-layout { grid-template-columns: 1fr; }.nlp-layout > .panel { min-height: 430px; }
   .system-hero { align-items: flex-start; gap: 20px; }.system-kpis { display: grid; gap: 7px; }.system-kpis div { text-align: left; }

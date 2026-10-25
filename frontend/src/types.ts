@@ -101,6 +101,32 @@ export interface RecommendationResult {
   recommendations: Recommendation[]
 }
 
+export interface RecommendationStrategyMetrics {
+  strategy: 'popularity' | 'nlp_quality' | 'als' | 'hybrid'
+  users: number
+  precision_at_k: number
+  recall_at_k: number
+  hit_rate_at_k: number
+  ndcg_at_k: number
+  mrr_at_k: number
+  catalog_coverage: number
+  category_diversity: number
+  novelty_bits: number
+}
+
+export interface RecommendationEvaluation {
+  model_version: string
+  evaluated_at: string
+  protocol: string
+  leakage_control: string
+  k: number
+  eligible_users: number
+  training_interactions: number
+  training_products: number
+  winner: RecommendationStrategyMetrics['strategy']
+  strategies: RecommendationStrategyMetrics[]
+}
+
 export interface Health {
   status: string
   mongodb: string

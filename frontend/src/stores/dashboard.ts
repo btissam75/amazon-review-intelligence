@@ -7,6 +7,7 @@ import type {
   Health,
   Overview,
   ProductProfile,
+  RecommendationEvaluation,
   SentimentDistribution,
 } from '../types'
 
@@ -16,6 +17,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const details = ref<AnalyticsDetails | null>(null)
   const products = ref<ProductProfile[]>([])
   const health = ref<Health | null>(null)
+  const recommendationEvaluation = ref<RecommendationEvaluation | null>(null)
   const loading = ref(false)
   const error = ref('')
   const updatedAt = ref<Date | null>(null)
@@ -40,6 +42,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
       details.value = detailResponse.data
       products.value = productResponse.data.items
       health.value = healthResponse.data
+      try {
+        recommendationEvaluation.value = (
+          await api.get<RecommendationEvaluation>('/api/v1/recommendations/evaluation')
+        ).data
+      } catch {
+        recommendationEvaluation.value = null
+      }
       updatedAt.value = new Date()
     } catch (cause) {
       error.value = errorMessage(cause)
@@ -48,5 +57,16 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
-  return { overview, sentiments, details, products, health, loading, error, updatedAt, load }
+  return {
+    overview,
+    sentiments,
+    details,
+    products,
+    health,
+    recommendationEvaluation,
+    loading,
+    error,
+    updatedAt,
+    load,
+  }
 })

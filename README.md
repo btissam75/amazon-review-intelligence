@@ -127,6 +127,12 @@ Product quality combines confidence-adjusted sentiment, average rating, and veri
 ratio. Recommendations carry human-readable reasons. Cold-start users receive a quality/popularity
 fallback rather than an error.
 
+The recommender also includes a leakage-controlled offline benchmark. For every eligible user,
+the chronologically latest interaction is hidden, while ALS and NLP product-quality signals are
+rebuilt from earlier interactions only. The same users are evaluated against four strategies:
+popularity, NLP quality, ALS, and the production hybrid. The report exposes Precision@10,
+Recall/HitRate@10, NDCG@10, MRR@10, catalog coverage, category diversity, and novelty.
+
 ### A user-facing ML product
 
 The Vue interface is organized around **Understand → Explore → Analyze → Decide** and includes:
@@ -161,6 +167,7 @@ The Vue interface is organized around **Understand → Explore → Analyze → D
 | `product_profiles` | Aggregated quality, sentiment, verification, and product metadata |
 | `user_recommendations` | Materialized personalized Top-10 per eligible user |
 | `recommendation_fallbacks` | Quality/popularity selection for cold-start users |
+| `recommendation_evaluations` | Temporal benchmark and comparable ranking metrics |
 | `model_registry` | Model version, weights, training status, and document counts |
 
 ## Quick start
@@ -265,6 +272,19 @@ The command writes `data/annotations/reviewed_reviews.jsonl` and
 `data/reports/annotation_report.json`. The report includes completion, conflicts, class
 distribution, double-annotation coverage, and Cohen's kappa.
 
+### 8. Evaluate recommendation quality
+
+Run the temporal leave-last-one-out benchmark after the cleaned corpus and sentiment model are
+available. This job is isolated from serving and never overwrites production recommendations.
+
+```powershell
+docker compose --profile evaluation build recommender-evaluation
+docker compose --profile evaluation run --rm recommender-evaluation
+```
+
+The result is stored in MongoDB, attached to `hybrid-als-nlp-v1` in the model registry, written to
+`data/reports/recommender_evaluation.json`, exposed by the API, and rendered in the dashboard.
+
 ## API surface
 
 | Method | Endpoint | Purpose |
@@ -281,6 +301,7 @@ distribution, double-annotation coverage, and Cohen's kappa.
 | `POST` | `/api/v1/annotations/{review_id}` | Save an independent human label |
 | `GET` | `/api/v1/annotations/conflicts/next` | Next task requiring adjudication |
 | `POST` | `/api/v1/annotations/{review_id}/adjudicate` | Resolve an annotation conflict |
+| `GET` | `/api/v1/recommendations/evaluation` | Temporal offline recommender benchmark |
 | `GET` | `/api/v1/recommendations/{user_id}` | Personalized or cold-start Top-10 |
 | `GET` | `/api/v1/recommendations` | Global fallback ranking |
 | `POST` | `/api/v1/sentiment/predict` | Live sentiment inference |

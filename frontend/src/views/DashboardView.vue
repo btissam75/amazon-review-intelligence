@@ -3,6 +3,7 @@ import {
   BadgeCheck,
   Box,
   BrainCircuit,
+  ChartNoAxesCombined,
   RefreshCw,
   Sparkles,
   Star,
@@ -25,6 +26,13 @@ const recommendationCoverage = computed(() => {
   if (!store.overview?.reviews) return 0
   return store.overview.recommendation_users / store.overview.reviews
 })
+const strategyNames = {
+  popularity: 'Popularité',
+  nlp_quality: 'Qualité NLP',
+  als: 'ALS',
+  hybrid: 'Hybride ALS + NLP',
+}
+const metricPercent = (value: number) => percent.format(value)
 
 onMounted(() => store.load())
 </script>
@@ -132,6 +140,45 @@ onMounted(() => store.load())
           <div><span class="kicker">Couverture personnalisée</span><strong>{{ number.format(store.overview.recommendation_users) }}</strong><p>utilisateurs disposent de recommandations hybrides ALS + NLP.</p></div>
           <div class="coverage-orbit"><span>{{ percent.format(recommendationCoverage) }}</span><small>du corpus</small></div>
           <RouterLink class="primary-button full-button" to="/recommendations">Tester une recommandation</RouterLink>
+        </article>
+
+        <article class="panel span-12 evaluation-panel">
+          <div class="panel-heading">
+            <div><span>Validation temporelle sans fuite</span><h2>Qualité des recommandations</h2></div>
+            <ChartNoAxesCombined :size="20" class="accent-icon" />
+          </div>
+          <template v-if="store.recommendationEvaluation">
+            <div class="evaluation-meta">
+              <span>{{ number.format(store.recommendationEvaluation.eligible_users) }} utilisateurs testés</span>
+              <span>Top-{{ store.recommendationEvaluation.k }}</span>
+              <span>{{ new Date(store.recommendationEvaluation.evaluated_at).toLocaleDateString('fr-FR') }}</span>
+              <strong>Gagnant : {{ strategyNames[store.recommendationEvaluation.winner] }}</strong>
+            </div>
+            <div class="evaluation-table">
+              <div class="evaluation-row evaluation-head">
+                <span>Stratégie</span><span>Hit Rate</span><span>NDCG</span><span>MRR</span><span>Couverture</span><span>Diversité</span>
+              </div>
+              <div
+                v-for="item in store.recommendationEvaluation.strategies"
+                :key="item.strategy"
+                class="evaluation-row"
+                :class="{ winner: item.strategy === store.recommendationEvaluation.winner }"
+              >
+                <strong>{{ strategyNames[item.strategy] }}</strong>
+                <span>{{ metricPercent(item.hit_rate_at_k) }}</span>
+                <span>{{ metricPercent(item.ndcg_at_k) }}</span>
+                <span>{{ metricPercent(item.mrr_at_k) }}</span>
+                <span>{{ metricPercent(item.catalog_coverage) }}</span>
+                <span>{{ metricPercent(item.category_diversity) }}</span>
+              </div>
+            </div>
+            <p class="evaluation-note">La dernière interaction de chaque utilisateur est masquée. Tous les signaux ALS et NLP sont recalculés uniquement sur son historique antérieur.</p>
+          </template>
+          <div v-else class="evaluation-empty">
+            <strong>Évaluation prête à être exécutée</strong>
+            <p>Lancez le job Spark d’évaluation pour comparer Popularité, Qualité NLP, ALS et modèle hybride sur les mêmes utilisateurs.</p>
+            <code>docker compose --profile evaluation run --rm recommender-evaluation</code>
+          </div>
         </article>
       </section>
     </template>
