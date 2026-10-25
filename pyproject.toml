@@ -30,6 +30,8 @@ dev = ["pytest>=8,<10", "ruff>=0.6,<1"]
 ari-prepare = "amazon_review_intelligence.data.prepare:app"
 ari-profile = "amazon_review_intelligence.data.profile:app"
 ari-train-baseline = "amazon_review_intelligence.nlp.train_baseline:app"
+ari-bootstrap-annotations = "amazon_review_intelligence.annotation.bootstrap:app"
+ari-export-annotations = "amazon_review_intelligence.annotation.export:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/amazon_review_intelligence"]
@@ -41,4 +43,3 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-

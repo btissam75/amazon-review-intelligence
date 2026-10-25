@@ -3,6 +3,7 @@ import {
   Activity,
   Boxes,
   BrainCircuit,
+  ClipboardCheck,
   LayoutDashboard,
   PackageSearch,
   Sparkles,
@@ -48,6 +49,10 @@ const navigation = [
     <RouterLink to="/system" class="nav-link technical-link" @click="$emit('close')">
       <Activity :size="19" />
       <span class="nav-copy"><strong>Pipeline & système</strong><small>Espace technique</small></span>
+    </RouterLink>
+    <RouterLink to="/annotations" class="nav-link" @click="$emit('close')">
+      <ClipboardCheck :size="19" />
+      <span class="nav-copy"><strong>Annotation humaine</strong><small>Qualité scientifique</small></span>
     </RouterLink>
 
     <div class="sidebar-status">

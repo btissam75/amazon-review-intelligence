@@ -13,7 +13,19 @@ from pymongo.database import Database
 from pymongo.errors import PyMongoError
 
 from amazon_review_intelligence.api.database import database_lifespan, get_database
-from amazon_review_intelligence.api.schemas import SentimentRequest, SentimentResponse
+from amazon_review_intelligence.annotation.service import (
+    annotation_progress,
+    next_annotation_task,
+    next_conflict_task,
+    save_adjudication,
+    save_annotation,
+)
+from amazon_review_intelligence.api.schemas import (
+    AdjudicationSubmission,
+    AnnotationSubmission,
+    SentimentRequest,
+    SentimentResponse,
+)
 from amazon_review_intelligence.nlp.inference import predict_sentiment
 
 
@@ -277,6 +289,82 @@ def sample_users(
         ).limit(limit)
     )
     return {"items": [row["user_id"] for row in users]}
+
+
+@app.get("/api/v1/annotations/progress", tags=["human-annotation"])
+def human_annotation_progress(
+    database: DatabaseDependency,
+    annotator: Annotated[str | None, Query(min_length=2, max_length=80)] = None,
+) -> dict:
+    return annotation_progress(database["annotation_tasks"], annotator)
+
+
+@app.get("/api/v1/annotations/next", tags=["human-annotation"])
+def next_human_annotation(
+    database: DatabaseDependency,
+    annotator: Annotated[str, Query(min_length=2, max_length=80)],
+) -> dict:
+    return {"task": next_annotation_task(database["annotation_tasks"], annotator)}
+
+
+@app.get("/api/v1/annotations/conflicts/next", tags=["human-annotation"])
+def next_annotation_conflict(database: DatabaseDependency) -> dict:
+    return {"task": next_conflict_task(database["annotation_tasks"])}
+
+
+@app.post("/api/v1/annotations/{review_id}", tags=["human-annotation"])
+def submit_human_annotation(
+    review_id: str,
+    submission: AnnotationSubmission,
+    database: DatabaseDependency,
+) -> dict:
+    document = save_annotation(
+        database["annotation_tasks"],
+        review_id,
+        submission.annotator.strip(),
+        submission.label,
+        submission.notes,
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="Tâche d'annotation introuvable")
+    labels = [row["label"] for row in document.get("annotations", [])]
+    return {
+        "saved": True,
+        "review_id": review_id,
+        "source_rating": document.get("source_rating"),
+        "weak_label": document.get("weak_label"),
+        "model_confidence": document.get("model_confidence"),
+        "annotation_count": len(labels),
+        "required_annotations": document.get("required_annotations", 1),
+        "agreement": len(set(labels)) <= 1,
+    }
+
+
+@app.post("/api/v1/annotations/{review_id}/adjudicate", tags=["human-annotation"])
+def adjudicate_human_annotation(
+    review_id: str,
+    submission: AdjudicationSubmission,
+    database: DatabaseDependency,
+) -> dict:
+    document = save_adjudication(
+        database["annotation_tasks"],
+        review_id,
+        submission.adjudicator.strip(),
+        submission.label,
+        submission.notes,
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="Conflit d'annotation introuvable")
+    return {
+        "saved": True,
+        "review_id": review_id,
+        "source_rating": document.get("source_rating"),
+        "weak_label": document.get("weak_label"),
+        "model_confidence": document.get("model_confidence"),
+        "annotation_count": len(document.get("annotations", [])),
+        "required_annotations": document.get("required_annotations", 2),
+        "agreement": True,
+    }
 
 
 @app.get("/api/v1/products", tags=["products"])

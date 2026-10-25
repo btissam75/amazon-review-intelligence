@@ -11,6 +11,11 @@ export default createRouter({
       component: () => import('./views/RecommendationsView.vue'),
     },
     { path: '/nlp', name: 'nlp', component: () => import('./views/NlpLabView.vue') },
+    {
+      path: '/annotations',
+      name: 'annotations',
+      component: () => import('./views/AnnotationView.vue'),
+    },
     { path: '/system', name: 'system', component: () => import('./views/SystemView.vue') },
   ],
 })

@@ -44,7 +44,7 @@ onMounted(applyTheme)
         <Sun v-if="dark" :size="18" />
         <Moon v-else :size="18" />
       </button>
-      <JourneyBar v-if="route.path !== '/system'" />
+      <JourneyBar v-if="!['/system', '/annotations'].includes(route.path)" />
       <RouterView />
     </main>
   </div>

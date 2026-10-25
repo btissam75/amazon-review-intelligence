@@ -241,6 +241,29 @@ docker compose up -d --build api frontend
 Invoke-RestMethod http://localhost:8000/api/v1/analytics/overview | ConvertTo-Json -Depth 5
 ```
 
+### 7. Build the human-reviewed gold dataset
+
+Create a balanced sample of 500 reviews per weak class. Twenty percent of the tasks require two
+independent annotations so that inter-annotator agreement can be measured with Cohen's kappa.
+
+```powershell
+docker compose run --rm api python -m amazon_review_intelligence.annotation.bootstrap
+```
+
+Open <http://localhost:3000/annotations>. The annotation screen deliberately hides the Amazon
+rating and model prediction until the human decision is saved. Conflicting double annotations can
+be adjudicated from the same interface.
+
+Export only completed consensus/adjudicated records:
+
+```powershell
+docker compose run --rm api python -m amazon_review_intelligence.annotation.export
+```
+
+The command writes `data/annotations/reviewed_reviews.jsonl` and
+`data/reports/annotation_report.json`. The report includes completion, conflicts, class
+distribution, double-annotation coverage, and Cohen's kappa.
+
 ## API surface
 
 | Method | Endpoint | Purpose |
@@ -252,6 +275,11 @@ Invoke-RestMethod http://localhost:8000/api/v1/analytics/overview | ConvertTo-Js
 | `GET` | `/api/v1/products` | Paginated search and quality filtering |
 | `GET` | `/api/v1/products/{product_id}` | Product intelligence and customer reviews |
 | `GET` | `/api/v1/users/sample` | Demonstration profiles for the UI |
+| `GET` | `/api/v1/annotations/progress` | Gold-dataset progress and agreement |
+| `GET` | `/api/v1/annotations/next` | Next blinded annotation task |
+| `POST` | `/api/v1/annotations/{review_id}` | Save an independent human label |
+| `GET` | `/api/v1/annotations/conflicts/next` | Next task requiring adjudication |
+| `POST` | `/api/v1/annotations/{review_id}/adjudicate` | Resolve an annotation conflict |
 | `GET` | `/api/v1/recommendations/{user_id}` | Personalized or cold-start Top-10 |
 | `GET` | `/api/v1/recommendations` | Global fallback ranking |
 | `POST` | `/api/v1/sentiment/predict` | Live sentiment inference |
