@@ -42,7 +42,8 @@ const notes = ref('')
 const loading = ref(false)
 const error = ref('')
 const adjudicating = ref(false)
-const started = computed(() => annotator.value.trim().length >= 2)
+const sessionStarted = ref(false)
+const canStart = computed(() => annotator.value.trim().length >= 2)
 const labels: { value: Label; title: string; shortcut: string; detail: string }[] = [
   { value: 'negative', title: 'Négatif', shortcut: '1', detail: 'Insatisfaction ou critique dominante' },
   { value: 'neutral', title: 'Neutre', shortcut: '2', detail: 'Information factuelle ou opinion équilibrée' },
@@ -82,7 +83,8 @@ async function loadNext() {
 }
 
 async function start() {
-  if (!started.value) return
+  if (!canStart.value) return
+  sessionStarted.value = true
   localStorage.setItem('ari-annotator', annotator.value.trim())
   await loadNext()
 }
@@ -124,7 +126,7 @@ function onKeydown(event: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
-  if (started.value) start()
+  if (canStart.value) start()
 })
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 </script>
@@ -137,9 +139,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       description="Annotez le texte sans voir la note Amazon ni la prédiction du modèle. Ces décisions humaines permettront une évaluation NLP réellement indépendante."
     />
 
-    <section v-if="!started || !task" class="annotation-start panel">
+    <section v-if="!sessionStarted || !task" class="annotation-start panel">
       <div class="annotation-start-icon"><ClipboardCheck :size="34" /></div>
-      <template v-if="!started">
+      <template v-if="!sessionStarted">
         <h2>Identifiez votre session d'annotation</h2>
         <p>Utilisez un nom stable. Il sert uniquement à mesurer l'accord entre évaluateurs.</p>
         <form @submit.prevent="start">
