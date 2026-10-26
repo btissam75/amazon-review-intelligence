@@ -79,3 +79,25 @@ def test_recommendation_evaluation_is_exposed_before_dynamic_user_route():
         api_main.app.dependency_overrides.clear()
     assert response.status_code == 200
     assert response.json()["winner"] == "hybrid"
+
+
+def test_nlp_human_evaluation_is_exposed():
+    report = {
+        "model_name": "tfidf_logistic_regression",
+        "model_version": "1",
+        "metrics": {"macro_f1": 0.75},
+    }
+
+    class EvaluationDatabase:
+        def __getitem__(self, name):
+            assert name == "nlp_evaluations"
+            return FakeCollection(report)
+
+    api_main.cache._values.clear()
+    api_main.app.dependency_overrides[get_database] = EvaluationDatabase
+    try:
+        response = TestClient(api_main.app).get("/api/v1/nlp/evaluation")
+    finally:
+        api_main.app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()["metrics"]["macro_f1"] == 0.75

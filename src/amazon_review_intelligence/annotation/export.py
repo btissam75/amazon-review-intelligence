@@ -33,6 +33,8 @@ def export(
                 "title": document.get("title"),
                 "text": document["text"],
                 "label": label,
+                "weak_label": document.get("weak_label"),
+                "model_confidence": document.get("model_confidence"),
                 "category": document.get("category"),
                 "review_timestamp": document.get("review_timestamp"),
                 "annotation_count": len(document.get("annotations", [])),

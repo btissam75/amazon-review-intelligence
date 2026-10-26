@@ -127,6 +127,45 @@ export interface RecommendationEvaluation {
   strategies: RecommendationStrategyMetrics[]
 }
 
+export interface NlpClassMetrics {
+  precision: number
+  recall: number
+  f1: number
+  support: number
+}
+
+export interface NlpHumanEvaluation {
+  model_name: string
+  model_version: string
+  evaluated_at: string
+  evaluation_source: string
+  dataset: {
+    size: number
+    human_distribution: Record<string, number>
+    prediction_distribution: Record<string, number>
+  }
+  metrics: {
+    accuracy: number
+    macro_precision: number
+    macro_recall: number
+    macro_f1: number
+    weighted_f1: number
+  }
+  per_class: Record<'negative' | 'neutral' | 'positive', NlpClassMetrics>
+  confusion_matrix: {
+    labels: Array<'negative' | 'neutral' | 'positive'>
+    values: number[][]
+  }
+  confidence: {
+    mean: number
+    low_confidence_threshold: number
+    low_confidence_count: number
+    low_confidence_ratio: number
+  }
+  weak_label_human_agreement: number | null
+  error_count: number
+}
+
 export interface Health {
   status: string
   mongodb: string

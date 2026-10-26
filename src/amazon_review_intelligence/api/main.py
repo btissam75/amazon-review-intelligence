@@ -457,6 +457,25 @@ def recommendation_evaluation(database: DatabaseDependency) -> dict:
     return cache.get_or_create("recommendation-evaluation", 60, calculate)
 
 
+@app.get("/api/v1/nlp/evaluation", tags=["nlp"])
+def nlp_human_evaluation(database: DatabaseDependency) -> dict:
+    """Expose the latest sentiment evaluation against human labels."""
+
+    def calculate() -> dict:
+        evaluation = database["nlp_evaluations"].find_one(
+            {"model_name": "tfidf_logistic_regression", "model_version": "1"},
+            {"_id": 0},
+        )
+        if not evaluation:
+            raise HTTPException(
+                status_code=404,
+                detail="Evaluation NLP humaine non encore exécutée",
+            )
+        return evaluation
+
+    return cache.get_or_create("nlp-human-evaluation", 60, calculate)
+
+
 @app.get("/api/v1/recommendations/{user_id}", tags=["recommendations"])
 def user_recommendations(user_id: str, database: DatabaseDependency) -> dict:
     result = database["user_recommendations"].find_one({"user_id": user_id}, {"_id": 0})

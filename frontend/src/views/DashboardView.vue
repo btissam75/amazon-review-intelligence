@@ -5,6 +5,7 @@ import {
   BrainCircuit,
   ChartNoAxesCombined,
   RefreshCw,
+  ScanSearch,
   Sparkles,
   Star,
   Users,
@@ -33,6 +34,7 @@ const strategyNames = {
   hybrid: 'Hybride ALS + NLP',
 }
 const metricPercent = (value: number) => percent.format(value)
+const sentimentNames = { negative: 'Négatif', neutral: 'Neutre', positive: 'Positif' }
 
 onMounted(() => store.load())
 </script>
@@ -140,6 +142,46 @@ onMounted(() => store.load())
           <div><span class="kicker">Couverture personnalisée</span><strong>{{ number.format(store.overview.recommendation_users) }}</strong><p>utilisateurs disposent de recommandations hybrides ALS + NLP.</p></div>
           <div class="coverage-orbit"><span>{{ percent.format(recommendationCoverage) }}</span><small>du corpus</small></div>
           <RouterLink class="primary-button full-button" to="/recommendations">Tester une recommandation</RouterLink>
+        </article>
+
+        <article class="panel span-12 nlp-quality-panel">
+          <div class="panel-heading">
+            <div><span>Référence humaine</span><h2>Qualité scientifique du NLP</h2></div>
+            <ScanSearch :size="20" class="accent-icon" />
+          </div>
+          <template v-if="store.nlpEvaluation">
+            <div class="nlp-evaluation-kpis">
+              <div><span>Macro-F1</span><strong>{{ metricPercent(store.nlpEvaluation.metrics.macro_f1) }}</strong></div>
+              <div><span>Accuracy</span><strong>{{ metricPercent(store.nlpEvaluation.metrics.accuracy) }}</strong></div>
+              <div><span>Corpus humain</span><strong>{{ number.format(store.nlpEvaluation.dataset.size) }}</strong></div>
+              <div><span>Erreurs</span><strong>{{ number.format(store.nlpEvaluation.error_count) }}</strong></div>
+            </div>
+            <div class="nlp-evaluation-layout">
+              <div class="class-score-list">
+                <div v-for="(metrics, label) in store.nlpEvaluation.per_class" :key="label">
+                  <span>{{ sentimentNames[label] }}</span>
+                  <i><b :style="{ width: `${metrics.f1 * 100}%` }" /></i>
+                  <strong>F1 {{ metricPercent(metrics.f1) }}</strong>
+                  <small>P {{ metricPercent(metrics.precision) }} · R {{ metricPercent(metrics.recall) }} · n={{ metrics.support }}</small>
+                </div>
+              </div>
+              <div class="confusion-block">
+                <strong>Matrice de confusion</strong>
+                <div class="confusion-grid">
+                  <template v-for="(row, rowIndex) in store.nlpEvaluation.confusion_matrix.values" :key="rowIndex">
+                    <span v-for="(value, columnIndex) in row" :key="`${rowIndex}-${columnIndex}`" :class="{ diagonal: rowIndex === columnIndex }">{{ value }}</span>
+                  </template>
+                </div>
+                <small>Lignes : vérité humaine · colonnes : prédiction</small>
+              </div>
+            </div>
+            <p class="evaluation-note">Évalué le {{ new Date(store.nlpEvaluation.evaluated_at).toLocaleDateString('fr-FR') }} sur des décisions humaines consensuelles ou arbitrées.</p>
+          </template>
+          <div v-else class="evaluation-empty">
+            <strong>En attente du corpus humain</strong>
+            <p>Terminez les annotations, exportez-les, puis exécutez l’évaluation du modèle actuellement servi.</p>
+            <code>docker compose run --rm api python -m amazon_review_intelligence.nlp.evaluate_human</code>
+          </div>
         </article>
 
         <article class="panel span-12 evaluation-panel">

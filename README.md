@@ -272,7 +272,22 @@ The command writes `data/annotations/reviewed_reviews.jsonl` and
 `data/reports/annotation_report.json`. The report includes completion, conflicts, class
 distribution, double-annotation coverage, and Cohen's kappa.
 
-### 8. Evaluate recommendation quality
+### 8. Evaluate NLP against human decisions
+
+Once reviewed annotations have been exported, evaluate the exact serialized model served by the
+API. The command calculates accuracy, Macro-F1, per-class precision/recall/F1, confidence
+statistics, disagreement analysis, and the confusion matrix.
+
+```powershell
+docker compose run --rm api python -m amazon_review_intelligence.nlp.evaluate_human
+```
+
+Results are written to `data/reports/nlp_human_evaluation.json` and
+`data/reports/nlp_confusion_matrix.png`, persisted in `nlp_evaluations`, exposed by FastAPI, and
+shown in the dashboard. The report always includes the evaluated human-corpus size, preventing a
+partial annotation sample from being mistaken for the final benchmark.
+
+### 9. Evaluate recommendation quality
 
 Run the temporal leave-last-one-out benchmark after the cleaned corpus and sentiment model are
 available. This job is isolated from serving and never overwrites production recommendations.
@@ -301,6 +316,7 @@ The result is stored in MongoDB, attached to `hybrid-als-nlp-v1` in the model re
 | `POST` | `/api/v1/annotations/{review_id}` | Save an independent human label |
 | `GET` | `/api/v1/annotations/conflicts/next` | Next task requiring adjudication |
 | `POST` | `/api/v1/annotations/{review_id}/adjudicate` | Resolve an annotation conflict |
+| `GET` | `/api/v1/nlp/evaluation` | Sentiment metrics against human-reviewed labels |
 | `GET` | `/api/v1/recommendations/evaluation` | Temporal offline recommender benchmark |
 | `GET` | `/api/v1/recommendations/{user_id}` | Personalized or cold-start Top-10 |
 | `GET` | `/api/v1/recommendations` | Global fallback ranking |

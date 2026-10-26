@@ -15,7 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 data = []
-nlp = ["scikit-learn>=1.5,<2", "joblib>=1.4,<2"]
+nlp = ["scikit-learn>=1.5,<2", "joblib>=1.4,<2", "matplotlib>=3.9,<4"]
 streaming = ["kafka-python-ng>=2.2,<3", "pymongo>=4.10,<5"]
 api = [
   "fastapi>=0.115,<1",
@@ -23,6 +23,7 @@ api = [
   "pymongo>=4.10,<5",
   "scikit-learn>=1.5,<2",
   "joblib>=1.4,<2",
+  "matplotlib>=3.9,<4",
 ]
 dev = ["pytest>=8,<10", "ruff>=0.6,<1"]
 
@@ -32,6 +33,7 @@ ari-profile = "amazon_review_intelligence.data.profile:app"
 ari-train-baseline = "amazon_review_intelligence.nlp.train_baseline:app"
 ari-bootstrap-annotations = "amazon_review_intelligence.annotation.bootstrap:app"
 ari-export-annotations = "amazon_review_intelligence.annotation.export:app"
+ari-evaluate-nlp = "amazon_review_intelligence.nlp.evaluate_human:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/amazon_review_intelligence"]

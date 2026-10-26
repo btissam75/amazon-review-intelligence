@@ -5,6 +5,7 @@ import { api, errorMessage } from '../api/client'
 import type {
   AnalyticsDetails,
   Health,
+  NlpHumanEvaluation,
   Overview,
   ProductProfile,
   RecommendationEvaluation,
@@ -18,6 +19,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const products = ref<ProductProfile[]>([])
   const health = ref<Health | null>(null)
   const recommendationEvaluation = ref<RecommendationEvaluation | null>(null)
+  const nlpEvaluation = ref<NlpHumanEvaluation | null>(null)
   const loading = ref(false)
   const error = ref('')
   const updatedAt = ref<Date | null>(null)
@@ -49,6 +51,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
       } catch {
         recommendationEvaluation.value = null
       }
+      try {
+        nlpEvaluation.value = (
+          await api.get<NlpHumanEvaluation>('/api/v1/nlp/evaluation')
+        ).data
+      } catch {
+        nlpEvaluation.value = null
+      }
       updatedAt.value = new Date()
     } catch (cause) {
       error.value = errorMessage(cause)
@@ -64,6 +73,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     products,
     health,
     recommendationEvaluation,
+    nlpEvaluation,
     loading,
     error,
     updatedAt,
