@@ -23,9 +23,11 @@ from amazon_review_intelligence.annotation.service import (
 from amazon_review_intelligence.api.schemas import (
     AdjudicationSubmission,
     AnnotationSubmission,
+    AspectSentimentRequest,
     SentimentRequest,
     SentimentResponse,
 )
+from amazon_review_intelligence.nlp.aspects import ASPECT_MODEL_VERSION, analyze_aspects
 from amazon_review_intelligence.nlp.inference import predict_sentiment
 
 
@@ -277,6 +279,85 @@ def analytics_details(database: DatabaseDependency) -> dict:
     return cache.get_or_create("analytics-details", 300, calculate)
 
 
+@app.get("/api/v1/analytics/aspects", tags=["analytics"])
+def aspect_distribution(
+    database: DatabaseDependency,
+    product_id: Annotated[str | None, Query(max_length=100)] = None,
+) -> dict:
+    cache_key = f"aspect-analytics:{product_id or 'global'}"
+
+    def calculate() -> dict:
+        match: dict = {"aspect_model_version": ASPECT_MODEL_VERSION}
+        if product_id:
+            match["product_id"] = product_id
+        rows = list(
+            database["reviews_enriched"].aggregate(
+                [
+                    {"$match": match},
+                    {"$unwind": "$aspect_sentiments"},
+                    {
+                        "$group": {
+                            "_id": {
+                                "aspect": "$aspect_sentiments.aspect",
+                                "label": "$aspect_sentiments.label",
+                            },
+                            "reviews": {"$sum": 1},
+                            "mentions": {"$sum": "$aspect_sentiments.mentions"},
+                            "average_confidence": {"$avg": "$aspect_sentiments.score"},
+                        }
+                    },
+                    {"$sort": {"mentions": -1}},
+                ],
+                allowDiskUse=True,
+            )
+        )
+        grouped: dict[str, dict] = {}
+        for row in rows:
+            aspect = row["_id"]["aspect"]
+            label = row["_id"]["label"]
+            item = grouped.setdefault(
+                aspect,
+                {
+                    "aspect": aspect,
+                    "reviews": 0,
+                    "mentions": 0,
+                    "distribution": {"negative": 0, "neutral": 0, "positive": 0},
+                    "confidence_sum": 0.0,
+                },
+            )
+            item["reviews"] += row["reviews"]
+            item["mentions"] += row["mentions"]
+            item["distribution"][label] = row["reviews"]
+            item["confidence_sum"] += row.get("average_confidence", 0.0) * row["reviews"]
+        items = []
+        for item in grouped.values():
+            reviews = item["reviews"] or 1
+            distribution = item["distribution"]
+            items.append(
+                {
+                    "aspect": item["aspect"],
+                    "reviews": item["reviews"],
+                    "mentions": item["mentions"],
+                    "distribution": distribution,
+                    "positive_percentage": round(100 * distribution["positive"] / reviews, 2),
+                    "negative_percentage": round(100 * distribution["negative"] / reviews, 2),
+                    "average_confidence": round(item["confidence_sum"] / reviews, 6),
+                }
+            )
+        items.sort(key=lambda item: item["mentions"], reverse=True)
+        job = database["pipeline_jobs"].find_one(
+            {"name": "aspect-sentiment-backfill"}, {"_id": 0}
+        )
+        return {
+            "model_version": ASPECT_MODEL_VERSION,
+            "scope": {"product_id": product_id} if product_id else {"type": "global"},
+            "job": job,
+            "items": items,
+        }
+
+    return cache.get_or_create(cache_key, 120, calculate)
+
+
 @app.get("/api/v1/users/sample", tags=["recommendations"])
 def sample_users(
     database: DatabaseDependency,
@@ -424,6 +505,8 @@ def product_detail(
                 "helpful_vote": 1,
                 "category": 1,
                 "review_timestamp": 1,
+                "aspect_sentiments": 1,
+                "aspect_model_version": 1,
             },
         )
         .sort([("helpful_vote", DESCENDING), ("review_timestamp", DESCENDING)])
@@ -518,3 +601,11 @@ def fallback_recommendations(database: DatabaseDependency) -> dict:
 def predict(request: SentimentRequest) -> SentimentResponse:
     label, confidence = predict_sentiment(request.text)
     return SentimentResponse(label=label, confidence=confidence)
+
+
+@app.post("/api/v1/sentiment/aspects", tags=["nlp"])
+def predict_aspect_sentiments(request: AspectSentimentRequest) -> dict:
+    return {
+        "model_version": ASPECT_MODEL_VERSION,
+        "aspects": analyze_aspects(request.text, request.title),
+    }

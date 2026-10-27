@@ -6,7 +6,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import { api, errorMessage } from '../api/client'
 import PageHeader from '../components/PageHeader.vue'
 import StateNotice from '../components/StateNotice.vue'
-import type { ProductProfile, Review } from '../types'
+import type { AspectAnalytics, ProductProfile, Review } from '../types'
 
 const route = useRoute()
 const products = ref<ProductProfile[]>([])
@@ -16,10 +16,11 @@ const offset = ref(0)
 const limit = 20
 const loading = ref(false)
 const error = ref('')
-const selected = ref<{ profile: ProductProfile; reviews: Review[] } | null>(null)
+const selected = ref<{ profile: ProductProfile; reviews: Review[]; aspects: AspectAnalytics } | null>(null)
 const detailLoading = ref(false)
 const number = new Intl.NumberFormat('fr-FR')
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'USD' })
+const aspectNames: Record<string, string> = { quality: 'Qualité', price: 'Prix', delivery: 'Livraison', packaging: 'Emballage', durability: 'Durabilité', usability: 'Utilisation' }
 let timer: number | undefined
 
 function sentimentLabel(label: string) {
@@ -51,10 +52,13 @@ async function openProduct(productId: string) {
   detailLoading.value = true
   error.value = ''
   try {
-    const { data } = await api.get<{ profile: ProductProfile; reviews: Review[] }>(
-      `/api/v1/products/${encodeURIComponent(productId)}`,
-    )
-    selected.value = data
+    const [detailResponse, aspectResponse] = await Promise.all([
+      api.get<{ profile: ProductProfile; reviews: Review[] }>(
+        `/api/v1/products/${encodeURIComponent(productId)}`,
+      ),
+      api.get<AspectAnalytics>('/api/v1/analytics/aspects', { params: { product_id: productId } }),
+    ])
+    selected.value = { ...detailResponse.data, aspects: aspectResponse.data }
   } catch (cause) {
     error.value = errorMessage(cause)
   } finally {
@@ -132,12 +136,17 @@ onMounted(async () => {
           <div class="detail-score"><strong>{{ Math.round(selected.profile.quality_score * 100) }}</strong><span>Score qualité<br/>NLP / 100</span></div>
           <div class="detail-metrics"><div><span>Note</span><strong>{{ selected.profile.average_rating.toFixed(2) }} ★</strong></div><div><span>Positif</span><strong>{{ Math.round(selected.profile.positive_ratio * 100) }}%</strong></div><div><span>Confiance</span><strong>{{ Math.round(selected.profile.average_confidence * 100) }}%</strong></div></div>
           <ul v-if="selected.profile.features?.length" class="feature-list"><li v-for="feature in selected.profile.features.slice(0, 4)" :key="feature">{{ feature }}</li></ul>
+          <div v-if="selected.aspects.items.length" class="product-aspect-summary">
+            <h3>Forces et irritants par aspect</h3>
+            <div><span v-for="item in selected.aspects.items" :key="item.aspect"><strong>{{ aspectNames[item.aspect] }}</strong>{{ item.positive_percentage }}% positif · {{ item.negative_percentage }}% négatif</span></div>
+          </div>
           <h3>Ce que disent les clients</h3>
           <div class="review-list">
             <article v-for="review in selected.reviews" :key="review.review_id" class="review-card">
               <div><span :class="`sentiment-badge ${review.sentiment_label}`">{{ sentimentLabel(review.sentiment_label) }}</span><span>{{ review.rating }} ★</span></div>
               <strong v-if="review.title">{{ review.title }}</strong><p>{{ review.text }}</p>
               <small>Confiance NLP {{ Math.round(review.sentiment_score * 100) }}%<template v-if="review.verified_purchase"> · Achat vérifié</template><template v-if="review.helpful_vote"> · {{ review.helpful_vote }} utile{{ review.helpful_vote > 1 ? 's' : '' }}</template></small>
+              <div v-if="review.aspect_sentiments?.length" class="review-aspects"><span v-for="aspect in review.aspect_sentiments" :key="aspect.aspect" :class="aspect.label">{{ aspectNames[aspect.aspect] }} · {{ sentimentLabel(aspect.label) }} {{ Math.round(aspect.score * 100) }}%</span></div>
               <RouterLink :to="{ path: '/nlp', query: { text: review.text } }" class="review-analyze">Analyser cet avis dans le laboratoire NLP →</RouterLink>
             </article>
           </div>

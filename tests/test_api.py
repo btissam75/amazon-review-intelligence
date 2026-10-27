@@ -101,3 +101,25 @@ def test_nlp_human_evaluation_is_exposed():
         api_main.app.dependency_overrides.clear()
     assert response.status_code == 200
     assert response.json()["metrics"]["macro_f1"] == 0.75
+
+
+def test_live_aspect_sentiment(monkeypatch):
+    monkeypatch.setattr(
+        api_main,
+        "analyze_aspects",
+        lambda text, title: [
+            {
+                "aspect": "delivery",
+                "label": "negative",
+                "score": 0.92,
+                "mentions": 1,
+                "evidence": [text],
+            }
+        ],
+    )
+    response = TestClient(api_main.app).post(
+        "/api/v1/sentiment/aspects",
+        json={"title": "Shipping", "text": "Delivery was late"},
+    )
+    assert response.status_code == 200
+    assert response.json()["aspects"][0]["aspect"] == "delivery"

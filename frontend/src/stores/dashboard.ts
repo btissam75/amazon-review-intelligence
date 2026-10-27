@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 import { api, errorMessage } from '../api/client'
 import type {
+  AspectAnalytics,
   AnalyticsDetails,
   Health,
   NlpHumanEvaluation,
@@ -20,6 +21,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const health = ref<Health | null>(null)
   const recommendationEvaluation = ref<RecommendationEvaluation | null>(null)
   const nlpEvaluation = ref<NlpHumanEvaluation | null>(null)
+  const aspectAnalytics = ref<AspectAnalytics | null>(null)
   const loading = ref(false)
   const error = ref('')
   const updatedAt = ref<Date | null>(null)
@@ -58,6 +60,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
       } catch {
         nlpEvaluation.value = null
       }
+      try {
+        aspectAnalytics.value = (
+          await api.get<AspectAnalytics>('/api/v1/analytics/aspects')
+        ).data
+      } catch {
+        aspectAnalytics.value = null
+      }
       updatedAt.value = new Date()
     } catch (cause) {
       error.value = errorMessage(cause)
@@ -74,6 +83,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     health,
     recommendationEvaluation,
     nlpEvaluation,
+    aspectAnalytics,
     loading,
     error,
     updatedAt,

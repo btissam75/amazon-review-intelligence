@@ -73,6 +73,38 @@ export interface Review {
   helpful_vote?: number
   category?: string
   review_timestamp?: string
+  aspect_sentiments?: AspectSentiment[]
+  aspect_model_version?: string
+}
+
+export interface AspectSentiment {
+  aspect: 'quality' | 'price' | 'delivery' | 'packaging' | 'durability' | 'usability'
+  label: 'positive' | 'negative' | 'neutral'
+  score: number
+  mentions: number
+  evidence: string[]
+}
+
+export interface AspectAnalyticsItem {
+  aspect: AspectSentiment['aspect']
+  reviews: number
+  mentions: number
+  distribution: Record<'negative' | 'neutral' | 'positive', number>
+  positive_percentage: number
+  negative_percentage: number
+  average_confidence: number
+}
+
+export interface AspectAnalytics {
+  model_version: string
+  scope: { type?: string; product_id?: string }
+  job?: {
+    status: string
+    target: number
+    processed: number
+    reviews_with_aspects?: number
+  }
+  items: AspectAnalyticsItem[]
 }
 
 export interface Recommendation {

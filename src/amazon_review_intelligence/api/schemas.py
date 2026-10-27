@@ -14,6 +14,11 @@ class SentimentResponse(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
+class AspectSentimentRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=10_000)
+    title: str | None = Field(default=None, max_length=500)
+
+
 class AnnotationSubmission(BaseModel):
     annotator: str = Field(min_length=2, max_length=80)
     label: Literal["negative", "neutral", "positive", "uncertain"]

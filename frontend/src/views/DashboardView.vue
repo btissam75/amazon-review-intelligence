@@ -35,6 +35,14 @@ const strategyNames = {
 }
 const metricPercent = (value: number) => percent.format(value)
 const sentimentNames = { negative: 'Négatif', neutral: 'Neutre', positive: 'Positif' }
+const aspectNames: Record<string, string> = {
+  quality: 'Qualité',
+  price: 'Prix',
+  delivery: 'Livraison',
+  packaging: 'Emballage',
+  durability: 'Durabilité',
+  usability: 'Facilité d’utilisation',
+}
 
 onMounted(() => store.load())
 </script>
@@ -181,6 +189,28 @@ onMounted(() => store.load())
             <strong>En attente du corpus humain</strong>
             <p>Terminez les annotations, exportez-les, puis exécutez l’évaluation du modèle actuellement servi.</p>
             <code>docker compose run --rm api python -m amazon_review_intelligence.nlp.evaluate_human</code>
+          </div>
+        </article>
+
+        <article class="panel span-12 aspect-panel">
+          <div class="panel-heading">
+            <div><span>Sentiment explicable</span><h2>Ce qui motive l’opinion des clients</h2></div>
+            <span v-if="store.aspectAnalytics?.job" class="live-pill"><i /> {{ store.aspectAnalytics.job.status }}</span>
+          </div>
+          <template v-if="store.aspectAnalytics?.items.length">
+            <div class="aspect-analytics-grid">
+              <div v-for="item in store.aspectAnalytics.items" :key="item.aspect" class="aspect-analytics-card">
+                <div><strong>{{ aspectNames[item.aspect] }}</strong><small>{{ number.format(item.mentions) }} mention{{ item.mentions > 1 ? 's' : '' }}</small></div>
+                <div class="aspect-balance"><i :style="{ width: `${item.positive_percentage}%` }" /><b :style="{ width: `${item.negative_percentage}%` }" /></div>
+                <p><span>{{ item.positive_percentage }}% positif</span><span>{{ item.negative_percentage }}% négatif</span></p>
+              </div>
+            </div>
+            <p class="evaluation-note">Analyse par phrase · {{ store.aspectAnalytics.model_version }}</p>
+          </template>
+          <div v-else class="evaluation-empty">
+            <strong>Enrichissement par aspect prêt</strong>
+            <p>Exécutez le traitement reprenable pour enrichir le million d’avis existants.</p>
+            <code>docker compose --profile aspects run --rm aspect-enricher</code>
           </div>
         </article>
 

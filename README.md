@@ -169,6 +169,7 @@ The Vue interface is organized around **Understand → Explore → Analyze → D
 | `recommendation_fallbacks` | Quality/popularity selection for cold-start users |
 | `recommendation_evaluations` | Temporal benchmark and comparable ranking metrics |
 | `model_registry` | Model version, weights, training status, and document counts |
+| `pipeline_jobs` | Resumable enrichment progress and operational status |
 
 ## Quick start
 
@@ -287,7 +288,22 @@ Results are written to `data/reports/nlp_human_evaluation.json` and
 shown in the dashboard. The report always includes the evaluated human-corpus size, preventing a
 partial annotation sample from being mistaken for the final benchmark.
 
-### 9. Evaluate recommendation quality
+### 9. Enrich sentiment by product aspect
+
+The aspect pipeline detects quality, price, delivery, packaging, durability, and usability at
+sentence level. It applies the serialized sentiment model only to relevant sentences, stores
+evidence and confidence with every review, and can safely resume after interruption.
+
+```powershell
+docker compose --profile aspects build aspect-enricher
+docker compose --profile aspects run --rm aspect-enricher
+```
+
+This historical backfill may take time on one million reviews. Progress is persisted in the
+`pipeline_jobs` collection, while already versioned reviews are skipped on every restart. New
+Kafka events receive the same enrichment directly in Spark Structured Streaming.
+
+### 10. Evaluate recommendation quality
 
 Run the temporal leave-last-one-out benchmark after the cleaned corpus and sentiment model are
 available. This job is isolated from serving and never overwrites production recommendations.
@@ -308,6 +324,7 @@ The result is stored in MongoDB, attached to `hybrid-als-nlp-v1` in the model re
 | `GET` | `/api/v1/analytics/overview` | Corpus, product, user, and model KPIs |
 | `GET` | `/api/v1/analytics/sentiments` | Sentiment distribution and confidence |
 | `GET` | `/api/v1/analytics/details` | Ratings, verified purchases, categories |
+| `GET` | `/api/v1/analytics/aspects` | Aspect sentiment globally or for one product |
 | `GET` | `/api/v1/products` | Paginated search and quality filtering |
 | `GET` | `/api/v1/products/{product_id}` | Product intelligence and customer reviews |
 | `GET` | `/api/v1/users/sample` | Demonstration profiles for the UI |
@@ -321,6 +338,7 @@ The result is stored in MongoDB, attached to `hybrid-als-nlp-v1` in the model re
 | `GET` | `/api/v1/recommendations/{user_id}` | Personalized or cold-start Top-10 |
 | `GET` | `/api/v1/recommendations` | Global fallback ranking |
 | `POST` | `/api/v1/sentiment/predict` | Live sentiment inference |
+| `POST` | `/api/v1/sentiment/aspects` | Sentence-level aspect sentiment and evidence |
 
 Example:
 

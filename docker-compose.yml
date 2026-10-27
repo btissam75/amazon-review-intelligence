@@ -115,6 +115,25 @@ services:
       - All_Beauty
       - Appliances
 
+  aspect-enricher:
+    build:
+      context: .
+      dockerfile: infrastructure/api.Dockerfile
+    profiles: ["aspects"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      ARI_MONGODB_URI: mongodb://mongodb:27017
+      ARI_MONGODB_DATABASE: amazon_reviews
+      ARI_MODEL_PATH: /opt/app/models/sentiment_baseline.joblib
+    command:
+      - python
+      - -m
+      - amazon_review_intelligence.nlp.backfill_aspects
+    volumes:
+      - ./models:/opt/app/models:ro
+
   spark-streaming:
     build:
       context: .

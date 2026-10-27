@@ -6,6 +6,7 @@ import time
 from pyspark.sql import DataFrame, SparkSession, functions as F, types as T
 
 from amazon_review_intelligence.nlp.inference import predict_sentiment
+from amazon_review_intelligence.nlp.aspects import ASPECT_MODEL_VERSION, analyze_aspects
 
 
 REVIEW_SCHEMA = T.StructType(
@@ -35,8 +36,21 @@ SENTIMENT_SCHEMA = T.StructType(
     ]
 )
 
+ASPECT_SCHEMA = T.ArrayType(
+    T.StructType(
+        [
+            T.StructField("aspect", T.StringType(), False),
+            T.StructField("label", T.StringType(), False),
+            T.StructField("score", T.DoubleType(), False),
+            T.StructField("mentions", T.IntegerType(), False),
+            T.StructField("evidence", T.ArrayType(T.StringType()), False),
+        ]
+    )
+)
+
 
 sentiment_udf = F.udf(predict_sentiment, SENTIMENT_SCHEMA)
+aspect_udf = F.udf(lambda title, text: analyze_aspects(text, title), ASPECT_SCHEMA)
 
 
 def run_mongo_operation_with_retry(operation, operation_name: str):
@@ -165,6 +179,8 @@ def main() -> None:
         .withColumn("sentiment_score", F.col("nlp.score"))
         .withColumn("model_name", F.lit("tfidf_logistic_regression"))
         .withColumn("model_version", F.lit("1"))
+        .withColumn("aspect_sentiments", aspect_udf("title", "text"))
+        .withColumn("aspect_model_version", F.lit(ASPECT_MODEL_VERSION))
         .withColumn("processed_at", F.current_timestamp())
         .drop("nlp")
     )
@@ -194,4 +210,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
