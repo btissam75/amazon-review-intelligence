@@ -2,17 +2,20 @@
 
 # Amazon Review Intelligence
 
-### From one million customer reviews to explainable product decisions
+### Production-minded Big Data, NLP and recommendation platform
 
-An end-to-end data and machine-learning platform that replays Amazon reviews as a real-time
-stream, predicts customer sentiment with NLP, builds product intelligence, and serves
-personalized recommendations through a polished analytics experience.
+**1,000,000 reviews · 154,311 products · 121,812 personalized user profiles**
+
+An end-to-end data and machine-learning product that turns large-scale Amazon review data into
+sentiment intelligence, explainable product insights, and personalized recommendations. It goes
+beyond model training: the repository includes resilient streaming, materialized serving data,
+scientific evaluation, ML monitoring, a documented API, and a user-facing web application.
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-4.1-231F20?logo=apachekafka)](https://kafka.apache.org/)
 [![Apache Spark](https://img.shields.io/badge/Apache_Spark-4.2-E25A1C?logo=apachespark&logoColor=white)](https://spark.apache.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-8.0-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-1.0_API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-REST_API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3-4FC08D?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Docker](https://img.shields.io/badge/Docker_Compose-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
@@ -22,12 +25,33 @@ personalized recommendations through a polished analytics experience.
 
 ---
 
-## Executive summary
+## Why this project matters
 
-Amazon Review Intelligence is a portfolio-grade implementation of a complete ML data product—not
-just a notebook or a standalone classifier. It connects data quality, event streaming, distributed
-processing, NLP inference, recommender systems, API design, and product-oriented visualization in
-one reproducible architecture.
+Amazon Review Intelligence demonstrates how to engineer a complete ML product—not only a notebook
+or an isolated classifier. A reproducible public dataset is replayed through Kafka, processed with
+Spark, enriched by shared NLP inference, aggregated in MongoDB, and exposed through FastAPI to a
+Vue decision dashboard.
+
+| Business need | Delivered capability |
+|---|---|
+| Understand customer opinion at scale | Three-class sentiment with confidence and temporal analysis |
+| Explain *why* customers react | Aspect sentiment for quality, price, delivery, packaging, durability, and usability |
+| Help users discover relevant products | Hybrid ALS + NLP Top-10 recommendations with readable reasons |
+| Keep ML results trustworthy | Human annotation, leakage-controlled evaluation, quality checks, and drift monitoring |
+| Turn models into a usable product | Searchable product catalog, REST API, dashboard, Docker runtime, and resumable jobs |
+
+### Engineering strengths demonstrated
+
+- **Data engineering:** contracts, replayable ingestion, Kafka partitioning, DLQ, Spark streaming,
+  checkpoints, idempotent writes, retry policies, and resumable backfills.
+- **Applied machine learning:** sentiment classification, aspect-level analysis, collaborative
+  filtering, hybrid ranking, confidence analysis, and cold-start handling.
+- **ML evaluation:** chronological splits, human-reviewed gold-set workflow, Precision/Recall,
+  Macro-F1, NDCG, MRR, coverage, diversity, novelty, PSI, and Jensen–Shannon divergence.
+- **Backend and product engineering:** versioned models, materialized recommendations, MongoDB
+  serving collections, FastAPI/OpenAPI, Vue 3/TypeScript, and responsive UX.
+- **Reproducibility:** one-command Docker services, explicit model versions, persisted job state,
+  automated tests, and reports stored separately from source code.
 
 The application guides users through a coherent decision journey:
 
@@ -40,7 +64,7 @@ The application guides users through a coherent decision journey:
 > events are replayed through Kafka to simulate a production event stream; the project does not
 > scrape Amazon's live website or bypass access controls.
 
-## Proven scale
+## Verified outcomes
 
 | Outcome | Verified result |
 |---|---:|
@@ -48,11 +72,12 @@ The application guides users through a coherent decision journey:
 | Product intelligence profiles | **154,311** |
 | Products enriched with names and metadata | **154,294 (99.989%)** |
 | Users with personalized Top-10 recommendations | **121,812** |
+| Reviews processed by aspect backfill | **1,000,000** |
+| Reviews with at least one detected aspect | **441,315 (44.13%)** |
 | Kafka partitions for review topics | **8** |
 | NLP training sample | **150,000 balanced reviews** |
 | Chronological NLP test set | **30,000 reviews** |
 | Sentiment macro-F1 | **0.757** |
-| Automated Python tests in the validated run | **14 passed** |
 
 Observed sentiment distribution on the one-million-review run:
 
@@ -75,14 +100,34 @@ flowchart LR
     C -->|product_id key| K[(Kafka · 8 partitions)]
     K --> S[Spark Structured Streaming]
     S -->|invalid events| DLQ2[amazon.reviews.dlq]
-    S -->|NLP-enriched events| E[amazon.reviews.enriched]
+    S -->|sentiment + aspects| E[amazon.reviews.enriched]
     S -->|idempotent upserts| M[(MongoDB)]
     M --> P[Product intelligence profiles]
     P --> R[Spark ALS + NLP re-ranking]
     R --> M
-    M --> API[FastAPI]
+    M --> MON[Quality & drift monitoring]
+    M --> ANN[Human annotation workflow]
+    MON --> API[FastAPI]
+    ANN --> API
+    M --> API
     API --> UI[Vue 3 decision dashboard]
 ```
+
+### Delivery status
+
+| Capability | Status | Evidence |
+|---|---|---|
+| Million-review Kafka/Spark pipeline | **Complete** | MongoDB contains 1,000,000 enriched reviews |
+| Product metadata enrichment | **Complete** | 154,294 of 154,311 profiles enriched |
+| Sentiment inference and analytics | **Complete** | Versioned model and measured chronological test report |
+| Aspect-based sentiment | **Complete** | Full-corpus backfill with 441,315 matched reviews |
+| Hybrid recommender | **Complete** | 121,812 materialized Top-10 user profiles |
+| Recommender offline evaluation | **Implemented** | Leakage-controlled temporal benchmark workflow |
+| Data-quality and NLP-drift monitoring | **Implemented** | Materialized snapshots, thresholds, alerts, and dashboard |
+| Human gold dataset | **In progress** | 1,500 balanced tasks prepared for independent annotation |
+
+“Implemented” means the capability and reproducible execution path are delivered; metrics are not
+presented as measured results until the corresponding job has been run on the target environment.
 
 ## What makes this project distinctive
 
@@ -112,6 +157,21 @@ flowchart LR
 | Positive | 0.857 |
 | **Macro average** | **0.757** |
 
+### Aspect intelligence that explains sentiment
+
+Global polarity alone does not explain whether customers react to a product's price, quality, or
+delivery. The aspect pipeline therefore:
+
+- detects **quality, price, delivery, packaging, durability, and usability** at sentence level;
+- applies the same versioned sentiment model only to relevant evidence;
+- stores aspect label, confidence, mention count, and supporting sentences with each review;
+- enriches new streaming events and provides a resumable historical backfill;
+- exposes global and per-product aspect distributions through FastAPI and the dashboard.
+
+The completed backfill processed all **1,000,000 reviews** and found at least one supported aspect
+in **441,315 reviews**. The deliberately transparent lexicon/sentence approach makes its behavior
+auditable and establishes a measurable baseline for a future ABSA Transformer.
+
 ### Hybrid recommendations, not a popularity list
 
 Spark ALS learns collaborative preferences from user–product interactions. Candidates are
@@ -133,6 +193,19 @@ rebuilt from earlier interactions only. The same users are evaluated against fou
 popularity, NLP quality, ALS, and the production hybrid. The report exposes Precision@10,
 Recall/HitRate@10, NDCG@10, MRR@10, catalog coverage, category diversity, and novelty.
 
+### Scientific validation and ML monitoring
+
+The project treats model quality as an operational responsibility:
+
+- a blinded interface prepares **1,500 balanced human-annotation tasks**;
+- 20% of tasks require double annotation for Cohen's kappa and conflict adjudication;
+- human labels can generate accuracy, Macro-F1, per-class metrics, and a confusion matrix;
+- data-quality audits detect broken contracts, empty text, invalid ratings, and duplicates;
+- two consecutive event-time windows measure sentiment drift with **Jensen–Shannon divergence**;
+- confidence drift is measured with **Population Stability Index (PSI)**;
+- explicit thresholds produce `healthy`, `warning`, or `critical` alerts;
+- snapshots are materialized in MongoDB so API requests never trigger million-row scans.
+
 ### A user-facing ML product
 
 The Vue interface is organized around **Understand → Explore → Analyze → Decide** and includes:
@@ -142,6 +215,9 @@ The Vue interface is organized around **Understand → Explore → Analyze → D
 - product images, prices, features, descriptions, and representative comments;
 - one-click transfer of a real review into the live NLP laboratory;
 - personalized recommendations with score decomposition;
+- aspect-level explanations and representative customer evidence;
+- a blinded human-annotation and adjudication workspace;
+- data-quality, model-confidence, and temporal-drift monitoring;
 - human-friendly demo profiles with technical IDs hidden behind an advanced control;
 - responsive dark/light themes and a dedicated pipeline health view.
 
@@ -153,7 +229,9 @@ The Vue interface is organized around **Understand → Explore → Analyze → D
 | Event transport | Apache Kafka 4.1 | Partitioned review stream and DLQ |
 | Stream processing | Spark Structured Streaming 4.2 | Validation, deduplication, batch NLP inference |
 | NLP | scikit-learn | TF-IDF + weighted logistic regression |
+| Aspect intelligence | Sentence rules + shared NLP model | Explainable per-aspect evidence and polarity |
 | Recommendations | Spark MLlib ALS | Collaborative filtering and candidate generation |
+| ML monitoring | MongoDB aggregations + statistical metrics | Data quality, JSD/PSI drift, operational alerts |
 | Serving store | MongoDB 8 | Reviews, profiles, recommendations, registry |
 | API | FastAPI | Analytics, product discovery, inference, recommendations |
 | Web application | Vue 3, TypeScript, Vite, ECharts | Interactive decision experience |
@@ -168,8 +246,27 @@ The Vue interface is organized around **Understand → Explore → Analyze → D
 | `user_recommendations` | Materialized personalized Top-10 per eligible user |
 | `recommendation_fallbacks` | Quality/popularity selection for cold-start users |
 | `recommendation_evaluations` | Temporal benchmark and comparable ranking metrics |
+| `annotation_tasks` | Blinded labels, double annotation, and expert adjudication |
+| `nlp_evaluations` | Human-grounded sentiment metrics and confusion matrix |
+| `monitoring_snapshots` | Versioned data-quality and NLP-drift reports |
 | `model_registry` | Model version, weights, training status, and document counts |
 | `pipeline_jobs` | Resumable enrichment progress and operational status |
+
+## Product walkthrough
+
+Once the stack is running, a reviewer can validate the project without reading the source first:
+
+1. Open the dashboard and inspect the one-million-review sentiment and rating overview.
+2. Search products by human-readable name, brand, or category and open real review evidence.
+3. Compare aspect sentiment to understand whether price, quality, delivery, or durability drives
+   customer opinion.
+4. Paste a review into the NLP laboratory and obtain a live label, confidence, and aspect evidence.
+5. Select a demonstration user and inspect personalized Top-10 recommendations and their reasons.
+6. Open the system view to inspect pipeline health, data quality, confidence, and temporal drift.
+7. Use the annotation workspace to see how a human-reviewed evaluation corpus is constructed.
+
+This flow makes the repository suitable for discussion in **Data Engineer, ML Engineer, Data
+Scientist, Backend Python, and Applied AI** interviews.
 
 ## Quick start
 
@@ -380,8 +477,9 @@ npm run typecheck
 npm run build
 ```
 
-Tests cover event normalization, preparation, chronological NLP splitting, inference, API
-behavior, bounded hybrid scoring, and explainable recommendation reasons.
+Tests cover event normalization, preparation, chronological NLP splitting, inference, aspect
+analysis, annotation workflows, API behavior, hybrid ranking, recommendation metrics, drift
+statistics, and alert thresholds.
 
 ## Repository structure
 
@@ -439,6 +537,13 @@ consequential decisions without further validation, bias analysis, privacy revie
 - [Functional and technical specification](outputs/cahier_des_charges_amazon_nlp.md)
 - [One-million-review validation report](outputs/rapport_pipeline_1_million.md)
 - [Initial delivery progress report](outputs/rapport_avancement_lot1.md)
+
+## Portfolio summary
+
+> Engineered an end-to-end Amazon review intelligence platform processing 1M events with Kafka
+> and Spark, serving sentiment and aspect analytics from MongoDB, and generating explainable hybrid
+> ALS/NLP recommendations for 121,812 users through FastAPI and Vue 3. Added human evaluation,
+> leakage-controlled ranking metrics, resilient Docker workflows, and ML drift monitoring.
 
 ---
 
