@@ -316,6 +316,23 @@ docker compose --profile evaluation run --rm recommender-evaluation
 The result is stored in MongoDB, attached to `hybrid-als-nlp-v1` in the model registry, written to
 `data/reports/recommender_evaluation.json`, exposed by the API, and rendered in the dashboard.
 
+### 11. Audit data quality and NLP drift
+
+Build a materialized monitoring snapshot after the corpus or NLP model changes:
+
+```powershell
+docker compose --profile monitoring build monitoring
+docker compose --profile monitoring run --rm monitoring
+```
+
+The audit validates the review contract, measures empty or invalid records, duplicate content,
+low-confidence predictions, and aspect coverage. It compares two consecutive 90-day event-time
+windows using Jensen–Shannon divergence for sentiment distribution and Population Stability Index
+(PSI) for model confidence. Explicit thresholds produce `healthy`, `warning`, or `critical`
+alerts. Snapshots are stored in `monitoring_snapshots`, exported to
+`data/reports/data_quality_drift.json`, and displayed in **Pipeline & system** without running
+million-row aggregations during an API request.
+
 ## API surface
 
 | Method | Endpoint | Purpose |
@@ -325,6 +342,8 @@ The result is stored in MongoDB, attached to `hybrid-als-nlp-v1` in the model re
 | `GET` | `/api/v1/analytics/sentiments` | Sentiment distribution and confidence |
 | `GET` | `/api/v1/analytics/details` | Ratings, verified purchases, categories |
 | `GET` | `/api/v1/analytics/aspects` | Aspect sentiment globally or for one product |
+| `GET` | `/api/v1/monitoring/status` | Latest data-quality and NLP-drift snapshot |
+| `GET` | `/api/v1/monitoring/history` | Lightweight operational monitoring history |
 | `GET` | `/api/v1/products` | Paginated search and quality filtering |
 | `GET` | `/api/v1/products/{product_id}` | Product intelligence and customer reviews |
 | `GET` | `/api/v1/users/sample` | Demonstration profiles for the UI |
@@ -374,6 +393,7 @@ amazon-review-intelligence/
 │   ├── api/                          # FastAPI routes and schemas
 │   ├── data/                         # Preparation, profiling, metadata enrichment
 │   ├── nlp/                          # Training and shared inference
+│   ├── monitoring/                   # Data quality, drift metrics, and alerts
 │   ├── recommendation/               # Spark ALS and hybrid scoring
 │   └── streaming/                    # Kafka producer and Spark job
 ├── tests/                            # Automated unit and API tests
@@ -401,9 +421,7 @@ model. Rating-derived labels contain noise, and the neutral class remains the ma
 Planned extensions:
 
 - DistilBERT/DeBERTa comparison on a manually reviewed evaluation subset;
-- aspect-based sentiment for price, quality, delivery, packaging, and durability;
-- data-quality, confidence, and temporal-drift monitoring;
-- recommender evaluation with NDCG@K and Recall@K;
+- scheduled monitoring, alert delivery, and automated retraining policies;
 - authentication, rate limiting, CI/CD, observability, and deployment manifests;
 - multilingual sentiment and localized product experiences.
 

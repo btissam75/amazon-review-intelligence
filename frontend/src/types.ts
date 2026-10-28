@@ -203,3 +203,51 @@ export interface Health {
   mongodb: string
   recommendation_model: string
 }
+
+export type MonitoringLevel = 'healthy' | 'warning' | 'critical'
+
+export interface MonitoringWindow {
+  start: string
+  end: string
+  total: number
+  sentiment_counts: Record<string, number>
+  sentiment_distribution: Record<'negative' | 'neutral' | 'positive', number>
+  average_confidence: number
+  low_confidence_rate: number
+  confidence_histogram: number[]
+}
+
+export interface MonitoringSnapshot {
+  version: string
+  generated_at: string
+  status: MonitoringLevel
+  quality_score: number
+  data_quality: {
+    total: number
+    critical_errors: number
+    critical_error_rate: number
+    duplicate_content: number
+    duplicate_rate: number
+    low_confidence: number
+    low_confidence_rate: number
+    average_confidence: number
+    aspect_enriched: number
+    aspect_coverage: number
+    empty_text: number
+    invalid_rating: number
+    invalid_sentiment: number
+  }
+  drift: {
+    window_days: number
+    baseline: MonitoringWindow
+    current: MonitoringWindow
+    sentiment_jsd: number
+    confidence_psi: number
+    confidence_delta: number
+  }
+  alerts: Array<{
+    level: 'info' | 'warning' | 'critical'
+    code: string
+    message: string
+  }>
+}

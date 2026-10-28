@@ -123,3 +123,25 @@ def test_live_aspect_sentiment(monkeypatch):
     )
     assert response.status_code == 200
     assert response.json()["aspects"][0]["aspect"] == "delivery"
+
+
+def test_latest_monitoring_snapshot_is_exposed():
+    report = {
+        "version": "data-quality-drift-v1",
+        "status": "healthy",
+        "quality_score": 99.8,
+    }
+
+    class MonitoringDatabase:
+        def __getitem__(self, name):
+            assert name == "monitoring_snapshots"
+            return FakeCollection(report)
+
+    api_main.cache._values.clear()
+    api_main.app.dependency_overrides[get_database] = MonitoringDatabase
+    try:
+        response = TestClient(api_main.app).get("/api/v1/monitoring/status")
+    finally:
+        api_main.app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()["quality_score"] == 99.8

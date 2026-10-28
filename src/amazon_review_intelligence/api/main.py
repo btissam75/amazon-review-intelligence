@@ -559,6 +559,50 @@ def nlp_human_evaluation(database: DatabaseDependency) -> dict:
     return cache.get_or_create("nlp-human-evaluation", 60, calculate)
 
 
+@app.get("/api/v1/monitoring/status", tags=["monitoring"])
+def monitoring_status(database: DatabaseDependency) -> dict:
+    """Expose the latest materialized data-quality and NLP-drift snapshot."""
+
+    def calculate() -> dict:
+        snapshot = database["monitoring_snapshots"].find_one(
+            {}, {"_id": 0}, sort=[("generated_at", DESCENDING)]
+        )
+        if not snapshot:
+            raise HTTPException(
+                status_code=404,
+                detail="Audit qualité et dérive non encore exécuté",
+            )
+        return snapshot
+
+    return cache.get_or_create("monitoring-status", 60, calculate)
+
+
+@app.get("/api/v1/monitoring/history", tags=["monitoring"])
+def monitoring_history(
+    database: DatabaseDependency,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> dict:
+    """Return lightweight historical snapshots for operational trend charts."""
+    rows = list(
+        database["monitoring_snapshots"]
+        .find(
+            {},
+            {
+                "_id": 0,
+                "generated_at": 1,
+                "status": 1,
+                "quality_score": 1,
+                "drift.sentiment_jsd": 1,
+                "drift.confidence_psi": 1,
+                "drift.confidence_delta": 1,
+            },
+        )
+        .sort("generated_at", DESCENDING)
+        .limit(limit)
+    )
+    return {"items": rows}
+
+
 @app.get("/api/v1/recommendations/{user_id}", tags=["recommendations"])
 def user_recommendations(user_id: str, database: DatabaseDependency) -> dict:
     result = database["user_recommendations"].find_one({"user_id": user_id}, {"_id": 0})

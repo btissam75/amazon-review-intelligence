@@ -35,6 +35,7 @@ ari-bootstrap-annotations = "amazon_review_intelligence.annotation.bootstrap:app
 ari-export-annotations = "amazon_review_intelligence.annotation.export:app"
 ari-evaluate-nlp = "amazon_review_intelligence.nlp.evaluate_human:app"
 ari-backfill-aspects = "amazon_review_intelligence.nlp.backfill_aspects:app"
+ari-build-monitoring = "amazon_review_intelligence.monitoring.build_report:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/amazon_review_intelligence"]

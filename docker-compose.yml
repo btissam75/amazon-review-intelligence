@@ -134,6 +134,27 @@ services:
     volumes:
       - ./models:/opt/app/models:ro
 
+  monitoring:
+    build:
+      context: .
+      dockerfile: infrastructure/api.Dockerfile
+    profiles: ["monitoring"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      ARI_MONGODB_URI: mongodb://mongodb:27017
+      ARI_MONGODB_DATABASE: amazon_reviews
+      ARI_MONITORING_REPORT: /opt/app/data/reports/data_quality_drift.json
+    command:
+      - python
+      - -m
+      - amazon_review_intelligence.monitoring.build_report
+      - --window-days
+      - "90"
+    volumes:
+      - ./data:/opt/app/data
+
   spark-streaming:
     build:
       context: .
